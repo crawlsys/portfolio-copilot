@@ -90,8 +90,10 @@ class FakeBroker:
         """Seed or overwrite a position. Recomputes unrealized_pnl."""
         if market_value is None:
             market_value = Money(amount=average_cost.amount * quantity, currency=average_cost.currency)
+        # Quantize to 4dp — Money rejects >4dp, and cost*qty can produce 5+.
+        raw_pnl = market_value.amount - (average_cost.amount * quantity)
         pnl = Money(
-            amount=market_value.amount - (average_cost.amount * quantity),
+            amount=raw_pnl.quantize(Decimal("0.0001")),
             currency=average_value_currency(average_cost, market_value),
         )
         pos = Position(
