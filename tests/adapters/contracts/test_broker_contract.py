@@ -13,17 +13,48 @@ from __future__ import annotations
 
 import inspect
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
 from trading.adapters.fake.broker import FakeBroker, make_default_fake_broker
 from trading.adapters.ports.broker import BrokerPort
-from trading.domain import AssetClass, Money, Symbol
+from trading.domain import AccountType, AssetClass, Money, Symbol
 
 
 @pytest.fixture()
 def fake() -> FakeBroker:
-    return make_default_fake_broker()
+    """A deterministic sample broker — independent of holdings.json.
+
+    Tests in this file assert specific shapes/values, so they need a known
+    fixture rather than whatever the user's real holdings happen to be.
+    """
+    broker = FakeBroker()
+    broker.add_account(
+        account_id="paper-001",
+        nickname="Paper Taxable",
+        masked_schwab_id="****0001",
+        account_type=AccountType.MARGIN,
+        margin_enabled=True,
+        cash=Money.usd("200000"),
+    )
+    broker.set_position(
+        account_id="paper-001",
+        symbol=Symbol("AAPL"),
+        quantity=Decimal("100"),
+        average_cost=Money.usd("150.00"),
+        market_value=Money.usd("17500.00"),
+    )
+    broker.set_position(
+        account_id="paper-001",
+        symbol=Symbol("NVDA"),
+        quantity=Decimal("50"),
+        average_cost=Money.usd("400.00"),
+        market_value=Money.usd("60000.00"),
+    )
+    broker.set_quote(Symbol("AAPL"), bid=Decimal("174.50"), ask=Decimal("175.50"))
+    broker.set_quote(Symbol("NVDA"), bid=Decimal("1195.00"), ask=Decimal("1205.00"))
+    return broker
 
 
 # --- Contract: FakeBroker satisfies BrokerPort shape ------------------------
@@ -141,12 +172,24 @@ class TestNoTradingMethodsInV1:
 
 
 @pytest.mark.asyncio
-async def test_default_fake_broker_has_realistic_cash() -> None:
-    """The seeded paper account should look like the user's actual situation."""
+async def test_default_fake_broker_loads_real_holdings_when_present() -> None:
+    """When data/holdings.json exists, the default broker loads it.
+
+    Tolerates the JSON being absent (CI without the user's statement); in
+    that case asserts the sample fallback account exists instead.
+    """
+
+    holdings_path = Path(__file__).resolve().parents[3] / "data" / "holdings.json"
     broker = make_default_fake_broker()
-    acct = await broker.get_account("paper-001")
-    # 200k starting cash minus 2 positions = roughly 122.5k
-    assert acct.cash.amount == Decimal("200000")
+    accounts = await broker.get_accounts()
+    assert len(accounts) >= 1
+    acct = await broker.get_account(accounts[0].account_id)
+    if holdings_path.exists():
+        assert len(acct.positions) >= 10, (
+            f"Expected >=10 positions from holdings.json, got {len(acct.positions)}"
+        )
+    else:
+        assert len(acct.positions) >= 1
 
 
 @pytest.mark.asyncio

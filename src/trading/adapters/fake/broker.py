@@ -12,9 +12,11 @@ joins it — but today there is no write path.
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 
 from trading.domain import (
     Account,
@@ -221,11 +223,50 @@ def average_value_currency(*monies: Money) -> str:
 
 
 def make_default_fake_broker() -> FakeBroker:
-    """Construct a FakeBroker seeded with one paper account + sample positions.
+    """Construct a FakeBroker seeded with real positions if available.
 
-    Used by local dev (`make dev`) and by tests that want realistic data
-    without setting up state.
+    Reads data/holdings.json (produced by scripts/parse_schwab_statement.py)
+    if present. Falls back to a small sample account when the JSON is absent
+    (CI, fresh checkouts, tests that don't need real data).
     """
+    holdings_path = Path(__file__).resolve().parents[4] / "data" / "holdings.json"
+    if holdings_path.exists():
+        return _broker_from_holdings(holdings_path)
+    return _broker_from_sample()
+
+
+def _broker_from_holdings(path: Path) -> FakeBroker:
+    """Build a FakeBroker from a parsed Schwab statement snapshot."""
+    snapshot = json.loads(path.read_text())
+    broker = FakeBroker()
+    account_type = (
+        AccountType.MARGIN if "Joint" in snapshot.get("nickname", "") else AccountType.TAXABLE
+    )
+    broker.add_account(
+        account_id=snapshot["account_id"],
+        nickname=snapshot.get("nickname", "Schwab"),
+        masked_schwab_id=snapshot.get("masked_schwab_id", "****-????"),
+        account_type=account_type,
+        margin_enabled=True,
+        cash=Money.usd(str(snapshot.get("cash", "0"))),
+    )
+    for h in snapshot.get("holdings", []):
+        try:
+            sym = Symbol(h["symbol"])
+        except ValueError:
+            continue  # skip invalid tickers (CUSIPs, preferred-share oddities)
+        broker.set_position(
+            account_id=snapshot["account_id"],
+            symbol=sym,
+            quantity=Decimal(str(h["quantity"])),
+            average_cost=Money.usd(str(h["cost_basis"])),
+            market_value=Money.usd(str(h["market_value"])),
+        )
+    return broker
+
+
+def _broker_from_sample() -> FakeBroker:
+    """Fallback when no holdings.json exists. Small synthetic account."""
     broker = FakeBroker()
     broker.add_account(
         account_id="paper-001",

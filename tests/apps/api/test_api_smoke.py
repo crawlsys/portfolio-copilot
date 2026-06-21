@@ -12,11 +12,15 @@ account reads). Verifies:
 
 from __future__ import annotations
 
+import asyncio
 import os
+from decimal import Decimal
 
 import pytest
 from apps.api.app import create_app
 from fastapi.testclient import TestClient
+
+from trading.adapters.fake.broker import make_default_fake_broker
 
 
 @pytest.fixture()
@@ -43,13 +47,23 @@ def test_health_ready(client: TestClient) -> None:
 
 
 def test_get_seeded_account(client: TestClient) -> None:
-    """FakeBroker's default paper account is reachable."""
-    r = client.get("/portfolio/paper-001")
-    assert r.status_code == 200
+    """The FakeBroker's default account (real or sample) is reachable."""
+    account_id = _first_account_id()
+
+    r = client.get(f"/portfolio/{account_id}")
+    assert r.status_code == 200, f"GET /portfolio/{account_id} failed: {r.text}"
     body = r.json()
-    assert body["accountId"] == "paper-001"
-    assert body["cash"] == "200000"
+    assert body["accountId"] == account_id
+    assert Decimal(body["cash"]) >= 0
     assert len(body["positions"]) >= 1
+
+
+def _first_account_id() -> str:
+    """Discover the FakeBroker's first account ID (real or sample)."""
+    broker = make_default_fake_broker()
+    accts = asyncio.run(broker.get_accounts())
+    assert len(accts) >= 1
+    return accts[0].account_id
 
 
 def test_unknown_account_returns_404(client: TestClient) -> None:
@@ -62,7 +76,7 @@ def test_unknown_account_returns_404(client: TestClient) -> None:
     reason="Refresh needs the no-DB 503 path; when DB is set this test is N/A",
 )
 def test_refresh_without_db_returns_503(client: TestClient) -> None:
-    r = client.post("/portfolio/paper-001/refresh")
+    r = client.post(f"/portfolio/{_first_account_id()}/refresh")
     assert r.status_code == 503
 
 
