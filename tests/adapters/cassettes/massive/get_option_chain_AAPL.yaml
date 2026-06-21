@@ -1,0 +1,20 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+    method: GET
+    uri: https://api.massive.com/v3/snapshot/options/AAPL?expiration_date=2022-01-21&limit=250
+  response:
+    body:
+      string: '{"request_id":"6a7e466379af0a71039d60cc78e72282","results":[{"break_even_price":151.2,"details":{"contract_type":"call","exercise_style":"american","expiration_date":"2022-01-21","shares_per_contract":100,"strike_price":150,"ticker":"O:AAPL220121C00150000"},"greeks":{"delta":1,"gamma":0,"theta":0.00229,"vega":0},"implied_volatility":5,"last_quote":{"ask":120.3,"ask_size":4,"bid":120.28,"bid_size":8,"last_updated":1605195918507251700,"midpoint":120.29,"timeframe":"REAL-TIME"},"open_interest":1543,"underlying_asset":{"last_updated":1605195918507251700,"price":147,"ticker":"AAPL","timeframe":"DELAYED"}}],"status":"OK"}'
+    headers:
+      Content-Type:
+      - application/json
+      X-Request-Id:
+      - 6a7e466379af0a71039d60cc78e72282
+    status:
+      code: 200
+      message: OK
+version: 1

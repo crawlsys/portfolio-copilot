@@ -1,0 +1,20 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+    method: GET
+    uri: https://api.massive.com/v2/snapshot/locale/us/markets/stocks/tickers/AAPL
+  response:
+    body:
+      string: '{"request_id":"657e430f1ae768891f018e08e03598d8","status":"OK","ticker":{"day":{"c":120.4229,"dv":"28727868.0","h":120.53,"l":118.81,"o":119.62,"v":28727868,"vw":119.725},"lastQuote":{"P":120.47,"S":4,"p":120.46,"s":8,"t":1605195918507251700},"lastTrade":{"c":[14,41],"ds":"236.0","i":"4046","p":120.47,"s":236,"t":1605195918306274000,"x":10},"ticker":"AAPL","todaysChange":0.98,"todaysChangePerc":0.82,"updated":1605195918306274000}}'
+    headers:
+      Content-Type:
+      - application/json
+      X-Request-Id:
+      - 657e430f1ae768891f018e08e03598d8
+    status:
+      code: 200
+      message: OK
+version: 1

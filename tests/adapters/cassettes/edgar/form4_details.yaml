@@ -1,0 +1,57 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/xml
+      User-Agent:
+      - tracker test@example.com
+    method: GET
+    uri: https://www.sec.gov/Archives/edgar/data/320193/000114036126025622/form4.xml
+  response:
+    body:
+      string: |
+        <?xml version="1.0"?>
+        <ownershipDocument>
+            <documentType>4</documentType>
+            <periodOfReport>2026-06-15</periodOfReport>
+            <issuer>
+                <issuerCik>0000320193</issuerCik>
+                <issuerName>Apple Inc.</issuerName>
+                <issuerTradingSymbol>AAPL</issuerTradingSymbol>
+            </issuer>
+            <reportingOwner>
+                <reportingOwnerId>
+                    <rptOwnerCik>0001780525</rptOwnerCik>
+                    <rptOwnerName>Newstead Jennifer</rptOwnerName>
+                </reportingOwnerId>
+                <reportingOwnerRelationship>
+                    <isOfficer>true</isOfficer>
+                    <officerTitle>SVP, GC and Secretary</officerTitle>
+                </reportingOwnerRelationship>
+            </reportingOwner>
+            <nonDerivativeTable>
+                <nonDerivativeTransaction>
+                    <securityTitle><value>Common Stock</value></securityTitle>
+                    <transactionDate><value>2026-06-15</value></transactionDate>
+                    <transactionCoding>
+                        <transactionCode>M</transactionCode>
+                    </transactionCoding>
+                    <transactionAmounts>
+                        <transactionShares><value>30104</value></transactionShares>
+                        <transactionPricePerShare><value>296.42</value></transactionPricePerShare>
+                        <transactionAcquiredDisposedCode><value>A</value></transactionAcquiredDisposedCode>
+                    </transactionAmounts>
+                    <postTransactionAmounts>
+                        <sharesOwnedFollowingTransaction><value>57784</value></sharesOwnedFollowingTransaction>
+                    </postTransactionAmounts>
+                </nonDerivativeTransaction>
+            </nonDerivativeTable>
+        </ownershipDocument>
+    headers:
+      Content-Type:
+      - application/xml
+    status:
+      code: 200
+      message: OK
+version: 1

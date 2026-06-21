@@ -1,0 +1,20 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      User-Agent:
+      - tracker test@example.com
+    method: GET
+    uri: https://efts.sec.gov/LATEST/search-index?q=apple&from=0&size=5
+  response:
+    body:
+      string: '{"took":150,"timed_out":false,"hits":{"total":{"value":10000,"relation":"gte"},"max_score":8.5,"hits":[{"_index":"edgar_file","_id":"test-1","_score":8.5,"_source":{"ciks":["0000320193"],"display_names":["Apple Inc.  (AAPL)  (CIK 0000320193)"],"form":"10-K","file_date":"2026-03-06","adsh":"0001234567-26-000001","file_type":"10-K","file_description":"Annual Report"}},{"_index":"edgar_file","_id":"test-2","_score":7.8,"_source":{"ciks":["0000320193"],"display_names":["Apple Inc.  (AAPL)"],"form":"8-K","file_date":"2026-05-15","adsh":"0001234567-26-000002","file_type":"8-K","file_description":"Current Report"}}]}}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

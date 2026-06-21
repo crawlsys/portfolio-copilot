@@ -1,0 +1,20 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+    method: GET
+    uri: https://api.massive.com/v2/snapshot/locale/us/markets/stocks/tickers?tickers=AAPL%2CMSFT
+  response:
+    body:
+      string: '{"count":2,"status":"OK","tickers":[{"day":{"c":120.4229,"v":28727868},"lastQuote":{"P":120.47,"S":4,"p":120.46,"s":8,"t":1605195918507251700},"lastTrade":{"p":120.47,"s":236,"t":1605195918306274000},"ticker":"AAPL","updated":1605195918306274000},{"day":{"c":420.11,"v":19000000},"lastQuote":{"P":420.12,"S":2,"p":420.10,"s":5,"t":1605195918507251700},"lastTrade":{"p":420.11,"s":100,"t":1605195918507251700},"ticker":"MSFT","updated":1605195918507251700}]}'
+    headers:
+      Content-Type:
+      - application/json
+      X-Request-Id:
+      - batch-request-id
+    status:
+      code: 200
+      message: OK
+version: 1

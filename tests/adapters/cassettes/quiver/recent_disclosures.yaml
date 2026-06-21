@@ -1,0 +1,20 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Authorization:
+      - Bearer test-token
+    method: GET
+    uri: https://api.quiverquant.com/beta/live/congresstrading
+  response:
+    body:
+      string: '[{"Representative":"Sheri Biggs","BioGuideID":"B001325","ReportDate":"2026-06-09T00:00:00Z","TransactionDate":"2026-04-28T00:00:00Z","Ticker":"-","Transaction":"Purchase","Range":"$1,001 - $15,000","House":"House","Party":"R","Description":"ALPHAKEYS BLACKSTONE LIFE SCIENCES VI LP"},{"Representative":"Nancy Pelosi","BioGuideID":"P000197","ReportDate":"2026-06-08T00:00:00Z","TransactionDate":"2026-05-01T00:00:00Z","Ticker":"NVDA","Transaction":"Sale (Partial)","Range":"$50,001 - $100,000","House":"House","Party":"D","Description":"NVIDIA Corp"},{"Representative":"Bad Row","ReportDate":null,"TransactionDate":"2026-05-01","Ticker":"AAPL","Transaction":"Purchase","Range":"$1,001 - $15,000","Party":"D"}]'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,20 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Authorization:
+      - Bearer test-token
+    method: GET
+    uri: https://api.quiverquant.com/beta/historical/congresstrading/NVDA
+  response:
+    body:
+      string: '[{"Representative":"Nancy Pelosi","BioGuideID":"P000197","ReportDate":"2026-06-08T00:00:00Z","TransactionDate":"2026-05-01T00:00:00Z","Ticker":"NVDA","Transaction":"Purchase","Range":"Over $50,000,000","House":"House","Party":"D","Description":"NVIDIA Corp"},{"Representative":"Dan Crenshaw","BioGuideID":"C001120","ReportDate":"2026-03-15T00:00:00Z","TransactionDate":"2026-02-20T00:00:00Z","Ticker":"NVDA","Transaction":"Exchange","Range":"$1,001 - $15,000","House":"House","Party":"R","Description":"NVIDIA Corp"},{"Representative":"Old Row","BioGuideID":"O000001","ReportDate":"2025-12-31T00:00:00Z","TransactionDate":"2025-12-01T00:00:00Z","Ticker":"NVDA","Transaction":"Sale","Range":"$1,001 - $15,000","House":"House","Party":"R","Description":"NVIDIA Corp"}]'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

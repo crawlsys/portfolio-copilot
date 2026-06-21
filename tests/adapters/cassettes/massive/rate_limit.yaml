@@ -1,0 +1,26 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+    method: GET
+    uri: https://api.massive.com/v3/reference/tickers?active=true&limit=10&market=stocks&order=asc&search=apple&sort=ticker
+  response:
+    body:
+      string: '{"status":"ERROR","request_id":"rate-limit-request-id","error":"Too Many Requests"}'
+    headers:
+      Content-Type:
+      - application/json
+      Retry-After:
+      - '30'
+      X-RateLimit-Limit:
+      - '5'
+      X-RateLimit-Remaining:
+      - '0'
+      X-RateLimit-Reset:
+      - '1771538400'
+    status:
+      code: 429
+      message: Too Many Requests
+version: 1
