@@ -1,0 +1,3 @@
+api: uv run uvicorn apps.api.app:create_app --factory --reload --port 8000
+worker: uv run python -m apps.worker
+web: pnpm --dir web dev
