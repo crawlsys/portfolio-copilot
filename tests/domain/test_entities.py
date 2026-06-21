@@ -1,4 +1,5 @@
 """Tests for domain entities — Portfolio, Congressional, Signals."""
+
 from __future__ import annotations
 
 import dataclasses

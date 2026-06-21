@@ -3,6 +3,7 @@
 Cacheable, low-fidelity-truth. A Quote is "someone said the price was X at T,"
 not authoritative. Decoupled from Portfolio so a bad tick never corrupts books.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -43,15 +44,15 @@ class Bar:
     volume: int
     opened_at: datetime
     closed_at: datetime
-    timeframe: str   # "1m", "5m", "1h", "1d"
+    timeframe: str  # "1m", "5m", "1h", "1d"
     vwap: Decimal | None = None
 
 
 class MarketRegime(Enum):
     """High-level market state. Drives briefing and (future) signal confidence."""
 
-    RISK_ON = "risk_on"        # bullish breadth, low vol, advancing
-    RISK_OFF = "risk_off"      # defensive, high vol, declining
+    RISK_ON = "risk_on"  # bullish breadth, low vol, advancing
+    RISK_OFF = "risk_off"  # defensive, high vol, declining
     NEUTRAL = "neutral"
     TRANSITION = "transition"  # regime just changed, unclear direction
 

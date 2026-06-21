@@ -3,6 +3,7 @@
 NEVER import this from trading.domain or trading.application — settings
 are an adapter/composition concern (per architecture rules).
 """
+
 from __future__ import annotations
 
 from functools import lru_cache

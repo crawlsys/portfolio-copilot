@@ -1,4 +1,5 @@
 """Tests for the event type catalog and the v1 scope guard."""
+
 from __future__ import annotations
 
 from trading.domain import EventType, is_produced_in_v1

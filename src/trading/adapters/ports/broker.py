@@ -19,6 +19,7 @@ Threat model: the LLM agent has code-execution access to the MCP process.
 The MCP process must NOT have any path to broker writes. Today that's
 trivially true: no write methods exist on this protocol.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

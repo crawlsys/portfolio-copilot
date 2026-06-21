@@ -3,6 +3,7 @@
 Source of truth for what the user owns. Reconciled against Schwab read-only;
 never written by the user or the agent.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,8 +19,8 @@ class DriftKind(Enum):
 
     QUANTITY = auto()
     COST_BASIS = auto()
-    MISSING_LOCAL = auto()     # broker has position, local doesn't
-    MISSING_BROKER = auto()    # local has position, broker doesn't
+    MISSING_LOCAL = auto()  # broker has position, local doesn't
+    MISSING_BROKER = auto()  # local has position, broker doesn't
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,9 +32,9 @@ class BrokerAccount:
     execution lands they become hard constraints in the order submit path.
     """
 
-    account_id: str             # Schwab account hash
-    nickname: str               # human label, e.g. "Taxable", "Roth IRA"
-    masked_schwab_id: str       # last 4, e.g. "****1234"
+    account_id: str  # Schwab account hash
+    nickname: str  # human label, e.g. "Taxable", "Roth IRA"
+    masked_schwab_id: str  # last 4, e.g. "****1234"
     account_type: AccountType
     margin_enabled: bool = False
     allowed_instruments: frozenset[AssetClass] = field(
@@ -54,11 +55,11 @@ class Position:
 
     account_id: str
     symbol: Symbol
-    quantity: Decimal               # long positive, short negative
-    average_cost: Money             # per-share cost basis
-    market_value: Money             # quantity * current price
-    unrealized_pnl: Money           # market_value - (quantity * average_cost)
-    as_of: datetime                 # when this state was observed
+    quantity: Decimal  # long positive, short negative
+    average_cost: Money  # per-share cost basis
+    market_value: Money  # quantity * current price
+    unrealized_pnl: Money  # market_value - (quantity * average_cost)
+    as_of: datetime  # when this state was observed
 
     @property
     def is_long(self) -> bool:
@@ -79,8 +80,8 @@ class Account:
 
     account_id: str
     cash: Money
-    market_value: Money             # sum of position market values
-    net_liquidation: Money          # cash + market_value (simplified)
+    market_value: Money  # sum of position market values
+    net_liquidation: Money  # cash + market_value (simplified)
     buying_power: Money
     margin_balance: Money | None = None
     day_pnl: Money | None = None

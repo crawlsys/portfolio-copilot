@@ -5,6 +5,7 @@
   still work in CI.
 - Async mode is set to 'auto' in pyproject.toml.
 """
+
 from __future__ import annotations
 
 import os

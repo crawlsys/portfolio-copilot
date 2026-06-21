@@ -14,6 +14,7 @@ lands*. In v1 there is no execution, so reconciliation against the broker
 is the only source of truth. Drift = anything that changed since last
 refresh. The阈值 is a constant for now; tune via config later.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -144,9 +145,7 @@ async def execute(
 # --- Helpers -----------------------------------------------------------------
 
 
-async def _load_local_positions(
-    session: AsyncSession, account_id: str
-) -> tuple[Position, ...]:
+async def _load_local_positions(session: AsyncSession, account_id: str) -> tuple[Position, ...]:
     """Read prior local positions. Empty if account is new."""
     rows = await session.stream(
         PositionRow.__table__.select().where(PositionRow.account_id == account_id)
@@ -167,9 +166,7 @@ async def _load_local_positions(
     return tuple(positions)
 
 
-async def _upsert_local_position(
-    session: AsyncSession, pos: Position, now: datetime
-) -> None:
+async def _upsert_local_position(session: AsyncSession, pos: Position, now: datetime) -> None:
     """Upsert a position row. Replaces any prior row for (account, symbol)."""
     # Delete-then-insert keeps the logic simple; SA upsert with composite
     # unique is awkward and we're not perf-sensitive here.
@@ -194,9 +191,7 @@ async def _upsert_local_position(
     )
 
 
-async def _delete_local_position(
-    session: AsyncSession, account_id: str, symbol: str
-) -> None:
+async def _delete_local_position(session: AsyncSession, account_id: str, symbol: str) -> None:
     await session.execute(
         delete(PositionRow).where(
             PositionRow.account_id == account_id,
@@ -205,12 +200,13 @@ async def _delete_local_position(
     )
 
 
-def _detect_drift(
-    fresh: Position, prior: Position | None
-) -> tuple[DriftKind, str] | None:
+def _detect_drift(fresh: Position, prior: Position | None) -> tuple[DriftKind, str] | None:
     """Return (kind, human detail) if drift exceeds thresholds; else None."""
     if prior is None:
-        return DriftKind.MISSING_LOCAL, f"{fresh.symbol.ticker}: new position (qty={fresh.quantity})"
+        return (
+            DriftKind.MISSING_LOCAL,
+            f"{fresh.symbol.ticker}: new position (qty={fresh.quantity})",
+        )
 
     qty_diff = abs(fresh.quantity - prior.quantity)
     if qty_diff > QUANTITY_DRIFT_EPSILON:
@@ -255,11 +251,7 @@ def _make_drift_event(
     now: datetime,
     correlation_id: UUID,
 ) -> DomainEvent:
-    severity = (
-        Severity.CRITICAL
-        if kind in (DriftKind.MISSING_BROKER,)
-        else Severity.WARNING
-    )
+    severity = Severity.CRITICAL if kind in (DriftKind.MISSING_BROKER,) else Severity.WARNING
     return DomainEvent(
         type=EventType.POSITION_DRIFT_DETECTED,
         aggregate_id=f"{account_id}:{symbol.ticker}",

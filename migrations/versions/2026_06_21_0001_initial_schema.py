@@ -7,6 +7,7 @@ Create Date: 2026-06-21 00:00:00 UTC
 Creates all tables for v1 (portfolio tool, no execution). The event_log
 trigger prevents UPDATE/DELETE — that's the durability guarantee.
 """
+
 from __future__ import annotations
 
 from typing import Union
@@ -142,9 +143,7 @@ def upgrade() -> None:
         "trade_disclosures",
         ["symbol", "transaction_date"],
     )
-    op.create_index(
-        "ix_disclosures_disclosed", "trade_disclosures", ["disclosure_date"]
-    )
+    op.create_index("ix_disclosures_disclosed", "trade_disclosures", ["disclosure_date"])
 
     # --- Market data cache ---
     op.create_table(
@@ -189,9 +188,7 @@ def upgrade() -> None:
         sa.Column("summary_markdown", sa.Text, nullable=False),
         sa.Column("push_excerpt", sa.Text, nullable=False),
         sa.Column("referenced_signal_ids", JSONB, nullable=False, server_default="[]"),
-        sa.Column(
-            "referenced_disclosure_ids", JSONB, nullable=False, server_default="[]"
-        ),
+        sa.Column("referenced_disclosure_ids", JSONB, nullable=False, server_default="[]"),
         sa.Column("body_blob_key", sa.String(256)),
         sa.Column(
             "generated_at",
@@ -217,9 +214,7 @@ def upgrade() -> None:
         sa.Column("metadata", JSONB, nullable=False, server_default="{}"),
         sa.UniqueConstraint("audit_id", name="uq_audit_id"),
     )
-    op.create_index(
-        "ix_audit_subject", "audit_log", ["subject_type", "subject_id"]
-    )
+    op.create_index("ix_audit_subject", "audit_log", ["subject_type", "subject_id"])
     op.create_index("ix_audit_correlation", "audit_log", ["correlation_id"])
     op.create_index("ix_audit_occurred", "audit_log", ["occurred_at"])
 
@@ -281,17 +276,13 @@ def upgrade() -> None:
         sa.Column("envelope", JSONB, nullable=False),
         sa.UniqueConstraint("event_id", name="uq_event_log_event_id"),
     )
-    op.create_index(
-        "ix_event_log_type_seq", "event_log", ["event_type", "sequence"]
-    )
+    op.create_index("ix_event_log_type_seq", "event_log", ["event_type", "sequence"])
     op.create_index(
         "ix_event_log_aggregate_seq",
         "event_log",
         ["aggregate_type", "aggregate_id", "sequence"],
     )
-    op.create_index(
-        "ix_event_log_occurred", "event_log", ["occurred_at", "sequence"]
-    )
+    op.create_index("ix_event_log_occurred", "event_log", ["occurred_at", "sequence"])
 
     # The trigger that makes event_log truly append-only. This is the
     # durability guarantee — projections can be rebuilt from this table.

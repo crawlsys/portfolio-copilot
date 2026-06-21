@@ -4,6 +4,7 @@ The persistence layer (UnitOfWork) wraps these in a full `EventEnvelope`
 with id, occurred_at, correlation_id, causation_id before writing to the
 outbox. Domain code raises `DomainEvent`s; it doesn't know about the envelope.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

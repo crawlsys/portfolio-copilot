@@ -7,6 +7,7 @@ Execution events are DEFINED but NEVER PRODUCED in v1 — see spec §Non-goals.
 They exist here so the type system has them when the Execution context is
 implemented (post-backtest validation).
 """
+
 from __future__ import annotations
 
 from enum import StrEnum

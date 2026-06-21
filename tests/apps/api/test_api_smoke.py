@@ -9,6 +9,7 @@ account reads). Verifies:
 - POST /portfolio/{account_id}/refresh returns 503 when no DB configured
 - The OpenAPI schema is non-empty and has the expected routes
 """
+
 from __future__ import annotations
 
 import os

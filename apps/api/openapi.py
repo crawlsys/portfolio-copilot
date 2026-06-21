@@ -3,6 +3,7 @@
 Outputs the OpenAPI spec to stdout. CI diffs it against web/openapi.json
 to detect drift between backend schema and the generated TS client.
 """
+
 from __future__ import annotations
 
 import json

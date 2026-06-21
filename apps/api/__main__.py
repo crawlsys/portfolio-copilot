@@ -1,4 +1,5 @@
 """Run the API: `python -m apps.api` (dev convenience)."""
+
 from __future__ import annotations
 
 import uvicorn

@@ -7,6 +7,7 @@ Also exposes market-hours queries (NYSE open/close, next open) — the domain
 needs to know whether it's safe to (eventually) submit orders, and the
 daily briefing needs to know if it's a trading day.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, time, timedelta

@@ -15,6 +15,7 @@ projections and enroll follow-up events into the SAME transaction.
 
 Delivery is at-least-once. Handlers MUST be idempotent (use consumer_offsets).
 """
+
 from __future__ import annotations
 
 from collections import defaultdict

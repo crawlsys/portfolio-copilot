@@ -3,6 +3,7 @@
 - /health/live: process is up. Always 200 if the route responds.
 - /health/ready: composition is built + (when configured) DB reachable.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, status

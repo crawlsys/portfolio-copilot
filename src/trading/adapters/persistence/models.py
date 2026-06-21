@@ -11,6 +11,7 @@ fractions, crypto splits if ever added).
 
 JSONB for event payloads, signal features, audit metadata.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -51,9 +52,7 @@ class BrokerAccountRow(Base):
     masked_schwab_id: Mapped[str] = mapped_column(String(32), nullable=False)
     account_type: Mapped[str] = mapped_column(String(32), nullable=False)  # AccountType.name
     margin_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    allowed_instruments: Mapped[list[str]] = mapped_column(
-        JSONB, default=list, nullable=False
-    )
+    allowed_instruments: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     max_order_size_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
     max_order_size_currency: Mapped[str] = mapped_column(String(3), default="USD")
     is_paper: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -96,9 +95,7 @@ class AccountSnapshotRow(Base):
     """Periodic snapshot of account balances — for time-series / charts."""
 
     __tablename__ = "account_snapshots"
-    __table_args__ = (
-        Index("ix_account_snapshots_account_as_of", "account_id", "as_of"),
-    )
+    __table_args__ = (Index("ix_account_snapshots_account_as_of", "account_id", "as_of"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     account_id: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -151,12 +148,8 @@ class TradeDisclosureRow(Base):
     asset_class: Mapped[str | None] = mapped_column(String(16))
     asset_description: Mapped[str] = mapped_column(Text, nullable=False)
     transaction_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    transaction_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    disclosure_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    transaction_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    disclosure_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     amount_range_low: Mapped[int | None] = mapped_column(Integer)
     amount_range_high: Mapped[int | None] = mapped_column(Integer)
     raw_blob_key: Mapped[str | None] = mapped_column(String(256))
@@ -201,9 +194,7 @@ class SignalRow(Base):
     horizon: Mapped[str] = mapped_column(String(16), nullable=False)
     thesis: Mapped[str] = mapped_column(Text, nullable=False)
     features: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict, nullable=False)
-    source_event_ids: Mapped[list[str]] = mapped_column(
-        JSONB, default=list, nullable=False
-    )
+    source_event_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -212,16 +203,12 @@ class BriefingRow(Base):
     __table_args__ = (Index("ix_briefings_date", "briefing_date"),)
 
     briefing_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    briefing_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    briefing_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     summary_markdown: Mapped[str] = mapped_column(Text, nullable=False)
     push_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
-    referenced_signal_ids: Mapped[list[str]] = mapped_column(
-        JSONB, default=list, nullable=False
-    )
+    referenced_signal_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     referenced_disclosure_ids: Mapped[list[str]] = mapped_column(
         JSONB, default=list, nullable=False
     )
@@ -251,11 +238,11 @@ class AuditRow(Base):
     action: Mapped[str] = mapped_column(String(64), nullable=False)
     subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
     subject_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     correlation_id: Mapped[str | None] = mapped_column(String(64))
-    audit_metadata: Mapped[dict[str, str]] = mapped_column("metadata", JSONB, default=dict, nullable=False)
+    audit_metadata: Mapped[dict[str, str]] = mapped_column(
+        "metadata", JSONB, default=dict, nullable=False
+    )
 
 
 # --- Event infrastructure (outbox + durable log) -----------------------------
@@ -283,9 +270,7 @@ class OutboxRow(Base):
     schema_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     envelope: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     correlation_id: Mapped[UUID] = mapped_column(pg.UUID(as_uuid=True), nullable=False)
     causation_id: Mapped[UUID | None] = mapped_column(pg.UUID(as_uuid=True))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -312,19 +297,13 @@ class EventLogRow(Base):
         Index("ix_event_log_occurred", "occurred_at", "sequence"),
     )
 
-    sequence: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True
-    )
-    event_id: Mapped[UUID] = mapped_column(
-        pg.UUID(as_uuid=True), unique=True, nullable=False
-    )
+    sequence: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    event_id: Mapped[UUID] = mapped_column(pg.UUID(as_uuid=True), unique=True, nullable=False)
     event_type: Mapped[str] = mapped_column(String(128), nullable=False)
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
     aggregate_id: Mapped[str] = mapped_column(String(128), nullable=False)
     aggregate_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
@@ -357,9 +336,7 @@ class SchwabTokenStateRow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     refresh_token_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    refresh_expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    refresh_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_canary_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_canary_ok: Mapped[bool | None] = mapped_column(Boolean)
     recorded_at: Mapped[datetime] = mapped_column(

@@ -7,6 +7,7 @@ Requires real Postgres. Verifies:
 - Marked published_at after success
 - Failed promotion records last_error and retries on next pass
 """
+
 from __future__ import annotations
 
 import os

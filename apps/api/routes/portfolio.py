@@ -6,6 +6,7 @@ triggers RefreshPositions (which writes to DB + emits outbox events).
 
 No trading endpoints. The contract test in tests/apps/api/ asserts that.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -107,4 +108,3 @@ def _account_to_dict(account: Account) -> dict[str, object]:
             for p in account.positions
         ],
     }
-

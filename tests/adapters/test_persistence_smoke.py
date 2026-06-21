@@ -8,6 +8,7 @@ This is a migration/correctness test, not a unit test. It catches:
 - check constraint enforcement (positions.quantity <> 0)
 - the event_log append-only trigger
 """
+
 from __future__ import annotations
 
 import os

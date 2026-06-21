@@ -13,6 +13,7 @@ Usage in a use case:
 The UnitOfWork does NOT publish to the in-process bus. The OutboxRelay does
 that, after the transaction commits, so handlers run with durable state.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

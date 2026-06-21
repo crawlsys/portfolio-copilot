@@ -8,6 +8,7 @@ Satisfies the full read contract of BrokerPort. When execution eventually
 lands, a PaperBroker (a *third* implementation that simulates fills)
 joins it — but today there is no write path.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -89,7 +90,9 @@ class FakeBroker:
     ) -> Position:
         """Seed or overwrite a position. Recomputes unrealized_pnl."""
         if market_value is None:
-            market_value = Money(amount=average_cost.amount * quantity, currency=average_cost.currency)
+            market_value = Money(
+                amount=average_cost.amount * quantity, currency=average_cost.currency
+            )
         # Quantize to 4dp — Money rejects >4dp, and cost*qty can produce 5+.
         raw_pnl = market_value.amount - (average_cost.amount * quantity)
         pnl = Money(
@@ -160,7 +163,11 @@ class FakeBroker:
             raise KeyError(f"Unknown account: {account_id}")
         orders = self._orders[account_id]
         if since is not None:
-            orders = [o for o in orders if o.get("entered_at", datetime.min.replace(tzinfo=UTC)) >= since]  # type: ignore[operator]
+            orders = [
+                o
+                for o in orders
+                if _as_datetime(o.get("entered_at"), datetime.min.replace(tzinfo=UTC)) >= since
+            ]
         return tuple(orders)
 
     async def get_transactions(
@@ -170,7 +177,11 @@ class FakeBroker:
             raise KeyError(f"Unknown account: {account_id}")
         txns = self._transactions[account_id]
         if since is not None:
-            txns = [t for t in txns if t.get("timestamp", datetime.min.replace(tzinfo=UTC)) >= since]  # type: ignore[operator]
+            txns = [
+                t
+                for t in txns
+                if _as_datetime(t.get("timestamp"), datetime.min.replace(tzinfo=UTC)) >= since
+            ]
         return tuple(txns)
 
     def stream_quotes(self, symbols: tuple[Symbol, ...]) -> AsyncIterator[Quote]:
@@ -241,6 +252,11 @@ def make_default_fake_broker() -> FakeBroker:
     broker.set_quote(Symbol("AAPL"), bid=Decimal("174.50"), ask=Decimal("175.50"))
     broker.set_quote(Symbol("NVDA"), bid=Decimal("1195.00"), ask=Decimal("1205.00"))
     return broker
+
+
+def _as_datetime(value: object, default: datetime) -> datetime:
+    """Coerce a dict value to datetime; return default if not a datetime."""
+    return value if isinstance(value, datetime) else default
 
 
 __all__ = [

@@ -14,6 +14,7 @@ in the log; consumers dedupe via consumer_offsets.
 This module is sync on the SA sync session for clarity. The worker process
 calls `relay.run_once()` in a loop.
 """
+
 from __future__ import annotations
 
 import json

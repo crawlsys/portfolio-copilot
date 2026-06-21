@@ -8,6 +8,7 @@ Also enforces the spec's central scope promise: the protocol has NO trading
 methods. If someone adds place_order/cancel_order to BrokerPort, these
 tests fail — which is the desired alarm.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -26,6 +27,7 @@ def fake() -> FakeBroker:
 
 
 # --- Contract: FakeBroker satisfies BrokerPort shape ------------------------
+
 
 def test_fake_broker_satisfies_broker_port(fake: FakeBroker) -> None:
     """FakeBroker must structurally satisfy BrokerPort."""
@@ -96,6 +98,7 @@ async def test_unknown_quote_raises(fake: FakeBroker) -> None:
 
 # --- Scope guard: NO trading methods on the v1 protocol ----------------------
 
+
 class TestNoTradingMethodsInV1:
     """Spec §Non-goals: no live order placement, no LLM-driven trade proposals.
 
@@ -105,10 +108,7 @@ class TestNoTradingMethodsInV1:
     """
 
     def _broker_port_methods(self) -> set[str]:
-        return {
-            name
-            for name, _ in inspect.getmembers(BrokerPort, predicate=inspect.isfunction)
-        }
+        return {name for name, _ in inspect.getmembers(BrokerPort, predicate=inspect.isfunction)}
 
     def test_no_place_order_method(self) -> None:
         methods = self._broker_port_methods()
@@ -138,6 +138,7 @@ class TestNoTradingMethodsInV1:
 
 
 # --- Seeded data sanity (also exercises the seeding helpers) -----------------
+
 
 @pytest.mark.asyncio
 async def test_default_fake_broker_has_realistic_cash() -> None:

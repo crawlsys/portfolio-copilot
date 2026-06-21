@@ -4,6 +4,7 @@ Single entrypoint for `uvicorn apps.api.app:create_app --factory`.
 Composition is built lazily on first request to allow tests to override
 dependencies via FastAPI's Depends() injection.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

@@ -7,6 +7,7 @@ adapter classes directly.
 `Composition` is constructed once at app startup. Tests construct their
 own with FakeBroker + NullClock.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

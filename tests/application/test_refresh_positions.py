@@ -8,6 +8,7 @@ Verifies:
 - Positions the broker no longer reports get deleted locally + flagged
 - All events land in outbox (transactional with state writes)
 """
+
 from __future__ import annotations
 
 import os
@@ -60,9 +61,7 @@ def _clean(engine):  # type: ignore[no-untyped-def]
         conn.execute(text("DELETE FROM outbox"))
         conn.execute(text("DELETE FROM positions"))
         conn.execute(text("DELETE FROM broker_accounts"))
-        conn.execute(
-            text("ALTER TABLE event_log DISABLE TRIGGER event_log_no_update")
-        )
+        conn.execute(text("ALTER TABLE event_log DISABLE TRIGGER event_log_no_update"))
         conn.execute(text("DELETE FROM event_log"))
         conn.execute(text("ALTER TABLE event_log ENABLE TRIGGER event_log_no_update"))
         conn.commit()
@@ -194,9 +193,7 @@ async def test_no_drift_when_position_unchanged(
 
     async with uow:
         result = await execute(
-            RefreshPositionsCommand(
-                account_id="acct-1", correlation_id=uuid4(), actor="test"
-            ),
+            RefreshPositionsCommand(account_id="acct-1", correlation_id=uuid4(), actor="test"),
             broker=fake_broker,
             uow=uow,
         )
@@ -239,9 +236,7 @@ async def test_quantity_drift_emits_drift_event(
 
     async with uow:
         result = await execute(
-            RefreshPositionsCommand(
-                account_id="acct-1", correlation_id=uuid4(), actor="test"
-            ),
+            RefreshPositionsCommand(account_id="acct-1", correlation_id=uuid4(), actor="test"),
             broker=fake_broker,
             uow=uow,
         )
@@ -282,9 +277,7 @@ async def test_below_epsilon_quantity_change_no_drift(
 
     async with uow:
         result = await execute(
-            RefreshPositionsCommand(
-                account_id="acct-1", correlation_id=uuid4(), actor="test"
-            ),
+            RefreshPositionsCommand(account_id="acct-1", correlation_id=uuid4(), actor="test"),
             broker=fake_broker,
             uow=uow,
         )
@@ -323,9 +316,7 @@ async def test_orphan_position_local_only_is_deleted_and_flagged(
 
     async with uow:
         result = await execute(
-            RefreshPositionsCommand(
-                account_id="acct-1", correlation_id=uuid4(), actor="test"
-            ),
+            RefreshPositionsCommand(account_id="acct-1", correlation_id=uuid4(), actor="test"),
             broker=fake_broker,
             uow=uow,
         )
@@ -334,9 +325,7 @@ async def test_orphan_position_local_only_is_deleted_and_flagged(
     assert any("ORPHAN" in d and "no longer reports" in d for d in result.drift_details)
 
     # ORPHAN row deleted from local positions.
-    rows = await async_session.execute(
-        select(PositionRow).where(PositionRow.symbol == "ORPHAN")
-    )
+    rows = await async_session.execute(select(PositionRow).where(PositionRow.symbol == "ORPHAN"))
     assert rows.scalars().first() is None
 
 
@@ -371,9 +360,7 @@ async def test_pnl_drift_threshold_triggers_drift(
 
     async with uow:
         result = await execute(
-            RefreshPositionsCommand(
-                account_id="acct-1", correlation_id=uuid4(), actor="test"
-            ),
+            RefreshPositionsCommand(account_id="acct-1", correlation_id=uuid4(), actor="test"),
             broker=fake_broker,
             uow=uow,
         )

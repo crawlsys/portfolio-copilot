@@ -2,6 +2,7 @@
 
 These are the atoms every bounded context uses. No I/O, no third-party deps.
 """
+
 from __future__ import annotations
 
 import re
@@ -21,6 +22,7 @@ BlobKey = NewType("BlobKey", str)
 
 # --- Enums -------------------------------------------------------------------
 
+
 class AssetClass(Enum):
     EQUITY = auto()
     OPTION = auto()
@@ -30,7 +32,7 @@ class AccountType(Enum):
     """Schwab account classification. Drives what's displayable / (later) tradeable."""
 
     TAXABLE = auto()
-    IRA = auto()        # traditional
+    IRA = auto()  # traditional
     ROTH_IRA = auto()
     MARGIN = auto()
     CASH = auto()
@@ -54,7 +56,7 @@ class TransactionType(Enum):
 
     PURCHASE = auto()
     SALE = auto()
-    SALE_PARTIAL = auto()    # sale of partial position
+    SALE_PARTIAL = auto()  # sale of partial position
     EXCHANGE = auto()
     OTHER = auto()
 
@@ -99,9 +101,7 @@ class Money:
                 "Never use floats — they lose precision."
             )
         if self.amount.as_tuple().exponent < -4:  # type: ignore[operator]
-            raise ValueError(
-                f"Money precision exceeds 4 decimal places: {self.amount}"
-            )
+            raise ValueError(f"Money precision exceeds 4 decimal places: {self.amount}")
         if not self.currency or len(self.currency) != 3:
             raise ValueError(f"currency must be a 3-letter ISO code, got {self.currency!r}")
 
@@ -134,9 +134,7 @@ class Money:
 
     def _check_currency(self, other: Money) -> None:
         if self.currency != other.currency:
-            raise ValueError(
-                f"Currency mismatch: {self.currency} vs {other.currency}"
-            )
+            raise ValueError(f"Currency mismatch: {self.currency} vs {other.currency}")
 
 
 @dataclass(frozen=True, slots=True)

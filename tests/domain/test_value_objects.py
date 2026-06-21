@@ -1,4 +1,5 @@
 """Unit tests for shared domain value objects. No I/O, fast."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -11,6 +12,7 @@ from hypothesis import strategies as st
 from trading.domain import AssetClass, DateRange, Money, Symbol
 
 # --- Money -------------------------------------------------------------------
+
 
 class TestMoneyConstruction:
     def test_usd_from_string_normalizes(self) -> None:
@@ -82,6 +84,7 @@ def test_money_add_sub_round_trip(a: Decimal, b: Decimal) -> None:
 
 # --- Symbol ------------------------------------------------------------------
 
+
 class TestSymbol:
     def test_equity_valid(self) -> None:
         assert str(Symbol("AAPL")) == "AAPL"
@@ -115,6 +118,7 @@ class TestSymbol:
 
 
 # --- DateRange ---------------------------------------------------------------
+
 
 class TestDateRange:
     def test_valid(self) -> None:

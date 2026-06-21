@@ -7,6 +7,7 @@ verbatim into the durable event_log table (JSONB column).
 Envelope IDs are generated here (uuid4) — never reused across events, which
 is what consumers dedupe on.
 """
+
 from __future__ import annotations
 
 import json

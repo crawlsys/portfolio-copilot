@@ -3,6 +3,7 @@
 Keeps imports in application/adapters tidy:
     from trading.domain import Account, Money, Symbol, EventType
 """
+
 from trading.domain.audit.entities import AuditRecord
 from trading.domain.common.event_types import (
     AggregateType,

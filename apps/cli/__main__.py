@@ -1,4 +1,5 @@
 """Tracker admin CLI. Entrypoint: `python -m apps.cli`."""
+
 from __future__ import annotations
 
 import click

@@ -7,6 +7,7 @@ Append-only record of every significant action. Distinct from the event log:
 
 Both are queryable. Audit mirrors every domain event by subscribing to the bus.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,10 +24,10 @@ class AuditRecord:
     """Immutable audit entry."""
 
     audit_id: AuditId
-    event_type: str              # e.g. "order.submit.attempt" (string, not EventType)
-    actor: ActorId | None        # None for system-initiated
-    action: str                  # e.g. "place_order", "rotate_token", "replay_event"
-    subject_type: str            # "order_intent", "briefing", "schwab_token", ...
+    event_type: str  # e.g. "order.submit.attempt" (string, not EventType)
+    actor: ActorId | None  # None for system-initiated
+    action: str  # e.g. "place_order", "rotate_token", "replay_event"
+    subject_type: str  # "order_intent", "briefing", "schwab_token", ...
     subject_id: str
     occurred_at: datetime
     correlation_id: str | None = None
