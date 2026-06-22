@@ -80,8 +80,13 @@ no_implicit_reexport = true
 files = ["src", "apps"]
 
 [[tool.mypy.overrides]]
-module = ["schwab.*", "apscheduler.*", "vcr.*"]
+module = ["schwab.*", "apscheduler.*", "vcr.*", "mcp.*", "trading.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["apps.mcp.*"]
+disallow_untyped_decorators = false
+disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

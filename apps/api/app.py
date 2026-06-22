@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from apps.api.routes.audit import router as audit_router
 from apps.api.routes.health import router as health_router
 from apps.api.routes.portfolio import router as portfolio_router
 from apps.common.composition import make_composition
@@ -25,6 +26,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     comp = make_composition(
         broker_mode=settings.broker_mode,
         database_url=settings.database_url,
+        s3_endpoint_url=settings.s3_endpoint_url,
+        s3_bucket=settings.s3_bucket,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
     )
     app.state.composition = comp
     yield
@@ -47,6 +52,7 @@ def create_app() -> FastAPI:
     # Routers imported at module top to avoid lazy imports.
     app.include_router(health_router)
     app.include_router(portfolio_router, prefix="/portfolio", tags=["portfolio"])
+    app.include_router(audit_router, prefix="/audit", tags=["audit"])
 
     return app
 

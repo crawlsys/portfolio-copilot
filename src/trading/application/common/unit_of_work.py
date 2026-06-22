@@ -20,6 +20,12 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from trading.adapters.object_store.protocol import (
+    BlobRef,
+    BlobStore,
+    blob_ref_payload,
+    maybe_blob_json,
+)
 from trading.adapters.persistence.models import OutboxRow
 from trading.application.common.event_envelope import EventEnvelope, make_envelope
 from trading.domain import DomainEvent
@@ -44,10 +50,12 @@ class UnitOfWork:
         session: AsyncSession,
         clock: ClockPort,
         correlation_id: UUID,
+        blob_store: BlobStore | None = None,
     ) -> None:
         self.session = session
         self.clock = clock
         self.correlation_id = correlation_id
+        self.blob_store = blob_store
         self._events: list[DomainEvent] = []
         self._causation_id: UUID | None = None
 
@@ -81,7 +89,8 @@ class UnitOfWork:
             for e in self._events
         ]
         for env in envelopes:
-            await self._insert_outbox_row(env)
+            stored_env = self._offload_payload_if_needed(env)
+            await self._insert_outbox_row(stored_env)
         await self.session.commit()
         self._events.clear()
         self._causation_id = None
@@ -103,6 +112,26 @@ class UnitOfWork:
         )
         # Don't flush — let the commit above flush everything together.
         # SA will assign IDs and write in one transaction.
+
+    def _offload_payload_if_needed(self, env: EventEnvelope) -> EventEnvelope:
+        stored = maybe_blob_json(
+            env.payload,
+            key=f"outbox/{env.id}.json",
+            blob_store=self.blob_store,
+        )
+        if not isinstance(stored, BlobRef):
+            return env
+        return EventEnvelope(
+            id=env.id,
+            type=env.type,
+            aggregate_id=env.aggregate_id,
+            aggregate_type=env.aggregate_type,
+            occurred_at=env.occurred_at,
+            correlation_id=env.correlation_id,
+            payload=blob_ref_payload(stored),
+            schema_version=env.schema_version,
+            causation_id=env.causation_id,
+        )
 
     async def __aiter__(self) -> AsyncIterator[EventEnvelope]:  # pragma: no cover
         """Yield envelopes as they were committed. Useful for tests."""

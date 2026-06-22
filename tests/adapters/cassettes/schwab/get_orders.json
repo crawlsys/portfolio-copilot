@@ -1,0 +1,60 @@
+{
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.schwabapi.com/trader/v1/accounts/HASH123ABC456DEF/orders",
+        "headers": {
+          "Authorization": "Bearer mock-access-token"
+        }
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "orderId": 12345,
+            "orderType": "LIMIT",
+            "status": "FILLED",
+            "enteredTime": "2026-06-20T14:30:00.000+0000",
+            "closedTime": "2026-06-20T14:35:00.000+0000",
+            "quantity": 100,
+            "filledQuantity": 100,
+            "price": 175.00,
+            "orderLegCollection": [
+              {
+                "instrument": {
+                  "symbol": "AAPL",
+                  "assetType": "EQUITY"
+                },
+                "instruction": "BUY",
+                "quantity": 100
+              }
+            ]
+          },
+          {
+            "orderId": 12346,
+            "orderType": "MARKET",
+            "status": "FILLED",
+            "enteredTime": "2026-06-19T10:00:00.000+0000",
+            "closedTime": "2026-06-19T10:00:05.000+0000",
+            "quantity": 50,
+            "filledQuantity": 50,
+            "orderLegCollection": [
+              {
+                "instrument": {
+                  "symbol": "NVDA",
+                  "assetType": "EQUITY"
+                },
+                "instruction": "BUY",
+                "quantity": 50
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

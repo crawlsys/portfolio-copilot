@@ -1,8 +1,8 @@
 """Contract tests for BrokerPort.
 
 The point: any implementation that claims to be a BrokerPort must satisfy
-this contract. Today there's only FakeBroker; when SchwabBrokerAdapter
-arrives, it gets parametrized into these same tests.
+this contract. Today there's FakeBroker + SchwabBrokerAdapter; both are
+verified against the same contract.
 
 Also enforces the spec's central scope promise: the protocol has NO trading
 methods. If someone adds place_order/cancel_order to BrokerPort, these
@@ -12,6 +12,7 @@ tests fail — which is the desired alarm.
 from __future__ import annotations
 
 import inspect
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from pathlib import Path
 
@@ -19,6 +20,7 @@ import pytest
 
 from trading.adapters.fake.broker import FakeBroker, make_default_fake_broker
 from trading.adapters.ports.broker import BrokerPort
+from trading.adapters.schwab import FileTokenStore, SchwabBrokerAdapter
 from trading.domain import AccountType, AssetClass, Money, Symbol
 
 
@@ -225,3 +227,93 @@ async def test_set_position_supports_option_symbol() -> None:
     positions = await broker.get_positions("a1")
     assert len(positions) == 1
     assert positions[0].symbol.asset_class == AssetClass.OPTION
+
+
+# --- SchwabBrokerAdapter contract tests --------------------------------------
+
+
+class TestSchwabBrokerAdapterContract:
+    """Verify SchwabBrokerAdapter structurally satisfies BrokerPort.
+
+    These are compile-time/structure checks. Runtime tests require cassettes
+    or live creds (see test_schwab_client.py).
+    """
+
+    def test_schwab_adapter_satisfies_broker_port(self) -> None:
+        """SchwabBrokerAdapter must structurally satisfy BrokerPort."""
+        adapter = SchwabBrokerAdapter(
+            client_id="test-client-id",
+            client_secret="test-client-secret",
+            redirect_uri="https://localhost:8080/callback",
+        )
+        assert isinstance(adapter, BrokerPort), (
+            "SchwabBrokerAdapter must structurally satisfy BrokerPort. "
+            "If this fails, SchwabBrokerAdapter is missing a method."
+        )
+        adapter.close()
+
+    def test_schwab_adapter_has_all_broker_port_methods(self) -> None:
+        """Verify all BrokerPort methods exist with correct signatures."""
+        adapter = SchwabBrokerAdapter(
+            client_id="test",
+            client_secret="test",
+            redirect_uri="https://localhost/callback",
+        )
+
+        # Verify method existence
+        assert hasattr(adapter, "get_accounts")
+        assert hasattr(adapter, "get_account")
+        assert hasattr(adapter, "get_positions")
+        assert hasattr(adapter, "get_orders")
+        assert hasattr(adapter, "get_transactions")
+        assert hasattr(adapter, "get_quote")
+        assert hasattr(adapter, "stream_quotes")
+
+        # Verify methods are callable
+        assert callable(adapter.get_accounts)
+        assert callable(adapter.get_account)
+        assert callable(adapter.get_positions)
+        assert callable(adapter.get_orders)
+        assert callable(adapter.get_transactions)
+        assert callable(adapter.get_quote)
+        assert callable(adapter.stream_quotes)
+
+        adapter.close()
+
+    def test_schwab_adapter_has_no_trading_methods(self) -> None:
+        """Scope guard: SchwabBrokerAdapter must NOT have trading methods.
+
+        If anyone adds place_order/cancel_order/buy/sell to the adapter,
+        this test fails — the read-only contract is violated.
+        """
+        adapter_methods = {
+            name
+            for name, _ in inspect.getmembers(SchwabBrokerAdapter, predicate=inspect.isfunction)
+            if not name.startswith("_")
+        }
+
+        forbidden = {"place_order", "cancel_order", "buy", "sell", "submit_order", "execute"}
+        overlap = adapter_methods & forbidden
+        assert not overlap, (
+            f"SchwabBrokerAdapter has forbidden trading methods: {overlap}. "
+            "This violates the read-only contract. See spec §Non-goals."
+        )
+
+    def test_schwab_adapter_constructor_params(self) -> None:
+        """Verify constructor accepts the specified parameters."""
+
+        executor = ThreadPoolExecutor(max_workers=2)
+        token_store = FileTokenStore()
+
+        adapter = SchwabBrokerAdapter(
+            client_id="client-id-123",
+            client_secret="secret-456",
+            redirect_uri="https://myapp.com/callback",
+            token_store=token_store,
+            executor=executor,
+        )
+
+        # Should construct without error
+        assert adapter is not None
+        adapter.close()
+        executor.shutdown(wait=False)

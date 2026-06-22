@@ -122,7 +122,11 @@ class Money:
         return Money(amount=self.amount - other.amount, currency=self.currency)
 
     def __mul__(self, factor: Decimal | int) -> Money:
-        return Money(amount=self.amount * Decimal(str(factor)), currency=self.currency)
+        # Quantize to 4dp — multiplication can produce more decimal places
+        # than either operand (e.g. 150.50 * 100 = 15050.00000), which would
+        # violate Money's 4dp invariant on construction.
+        product = (self.amount * Decimal(str(factor))).quantize(Decimal("0.0001"))
+        return Money(amount=product, currency=self.currency)
 
     __rmul__ = __mul__
 

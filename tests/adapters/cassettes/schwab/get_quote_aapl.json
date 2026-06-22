@@ -1,0 +1,40 @@
+{
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.schwabapi.com/marketdata/v1/AAPL/quotes?fields=quote",
+        "headers": {
+          "Authorization": "Bearer mock-access-token"
+        }
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "AAPL": {
+            "quote": {
+              "bidPrice": 175.50,
+              "askPrice": 176.00,
+              "lastPrice": 175.75,
+              "openPrice": 174.00,
+              "highPrice": 177.50,
+              "lowPrice": 173.50,
+              "closePrice": 175.25,
+              "totalVolume": 52345678,
+              "quoteTime": 1719000000000,
+              "tradeTime": 1719000000000
+            },
+            "reference": {
+              "symbol": "AAPL",
+              "description": "Apple Inc",
+              "exchange": "NASDAQ"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

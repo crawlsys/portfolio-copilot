@@ -1,0 +1,44 @@
+{
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.schwabapi.com/trader/v1/accounts",
+        "headers": {
+          "Authorization": "Bearer mock-access-token"
+        }
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "securitiesAccount": {
+              "accountNumber": "123456789",
+              "type": "MARGIN",
+              "currentBalances": {
+                "cashBalance": 50000.00,
+                "liquidationValue": 150000.00,
+                "buyingPower": 100000.00,
+                "marginBalance": -10000.00
+              }
+            }
+          },
+          {
+            "securitiesAccount": {
+              "accountNumber": "987654321",
+              "type": "IRA",
+              "currentBalances": {
+                "cashBalance": 25000.00,
+                "liquidationValue": 75000.00,
+                "buyingPower": 25000.00
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

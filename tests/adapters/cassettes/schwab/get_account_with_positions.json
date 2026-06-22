@@ -1,0 +1,70 @@
+{
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.schwabapi.com/trader/v1/accounts/HASH123ABC456DEF?fields=positions",
+        "headers": {
+          "Authorization": "Bearer mock-access-token"
+        }
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "securitiesAccount": {
+            "accountNumber": "123456789",
+            "type": "MARGIN",
+            "currentBalances": {
+              "cashBalance": 50000.00,
+              "liquidationValue": 150000.00,
+              "buyingPower": 100000.00,
+              "marginBalance": -10000.00,
+              "dayPnl": 1500.00
+            },
+            "positions": [
+              {
+                "instrument": {
+                  "symbol": "AAPL",
+                  "assetType": "EQUITY",
+                  "cusip": "037833100"
+                },
+                "longQuantity": 100.0,
+                "shortQuantity": 0.0,
+                "averagePrice": 150.50,
+                "marketValue": 17550.00,
+                "currentDayProfitLoss": 500.00
+              },
+              {
+                "instrument": {
+                  "symbol": "NVDA",
+                  "assetType": "EQUITY",
+                  "cusip": "67066G104"
+                },
+                "longQuantity": 50.0,
+                "shortQuantity": 0.0,
+                "averagePrice": 400.00,
+                "marketValue": 60000.00,
+                "currentDayProfitLoss": 1000.00
+              },
+              {
+                "instrument": {
+                  "symbol": "MSFT",
+                  "assetType": "EQUITY",
+                  "cusip": "594918104"
+                },
+                "longQuantity": 75.0,
+                "shortQuantity": 0.0,
+                "averagePrice": 280.00,
+                "marketValue": 31500.00,
+                "currentDayProfitLoss": -200.00
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

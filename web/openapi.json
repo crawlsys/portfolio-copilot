@@ -1,0 +1,424 @@
+{
+  "components": {
+    "schemas": {
+      "AccountSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "title": "Accountid",
+            "type": "string"
+          },
+          "asOf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
+          "buyingPower": {
+            "title": "Buyingpower",
+            "type": "string"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": "string"
+          },
+          "cashCurrency": {
+            "title": "Cashcurrency",
+            "type": "string"
+          },
+          "marketValue": {
+            "title": "Marketvalue",
+            "type": "string"
+          },
+          "netLiquidation": {
+            "title": "Netliquidation",
+            "type": "string"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/PositionSnapshot"
+            },
+            "title": "Positions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "accountId",
+          "cash",
+          "cashCurrency",
+          "marketValue",
+          "netLiquidation",
+          "buyingPower",
+          "asOf",
+          "positions"
+        ],
+        "title": "AccountSnapshot",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PositionSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "assetClass": {
+            "title": "Assetclass",
+            "type": "string"
+          },
+          "averageCost": {
+            "title": "Averagecost",
+            "type": "string"
+          },
+          "marketValue": {
+            "title": "Marketvalue",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "unrealizedPnl": {
+            "title": "Unrealizedpnl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "assetClass",
+          "quantity",
+          "averageCost",
+          "marketValue",
+          "unrealizedPnl"
+        ],
+        "title": "PositionSnapshot",
+        "type": "object"
+      },
+      "RefreshPortfolioResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "drift_details": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Drift Details",
+            "type": "array"
+          },
+          "drift_detected": {
+            "title": "Drift Detected",
+            "type": "boolean"
+          },
+          "refreshed_at": {
+            "title": "Refreshed At",
+            "type": "string"
+          },
+          "refreshed_positions_count": {
+            "title": "Refreshed Positions Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "account_id",
+          "refreshed_positions_count",
+          "drift_detected",
+          "drift_details",
+          "refreshed_at"
+        ],
+        "title": "RefreshPortfolioResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Personal portfolio + Congressional research tool. No live trade execution (see spec \u00a7Non-goals).",
+    "title": "tracker",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/audit/chain/{correlation_id}": {
+      "get": {
+        "operationId": "get_audit_chain_audit_chain__correlation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "correlation_id",
+            "required": true,
+            "schema": {
+              "title": "Correlation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Audit Chain Audit Chain  Correlation Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audit Chain",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/audit/subject/{type}/{id}": {
+      "get": {
+        "operationId": "get_audit_subject_audit_subject__type___id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "title": "Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Audit Subject Audit Subject  Type   Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audit Subject",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Live Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Live"
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Ready iff composition is built. Optionally pings DB.\n\nFor v1 this is always 200 once the app is up \u2014 we don't have a hard\nDB dependency in the hot path yet (FakeBroker works without DB).",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready"
+      }
+    },
+    "/portfolio/{account_id}": {
+      "get": {
+        "description": "Return the current account snapshot from the broker.",
+        "operationId": "get_account_portfolio__account_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Account",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/portfolio/{account_id}/refresh": {
+      "post": {
+        "description": "Refresh positions for an account. Writes to DB + emits outbox events.\n\nRequires DATABASE_URL to be configured. If using FakeBroker without\nDB, this returns 503 (the use case needs persistence).",
+        "operationId": "refresh_portfolio__account_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshPortfolioResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.schwabapi.com/trader/v1/accounts/accountNumbers",
+        "headers": {
+          "Authorization": "Bearer mock-access-token"
+        }
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "accountNumber": "123456789",
+            "hashValue": "HASH123ABC456DEF"
+          },
+          {
+            "accountNumber": "987654321",
+            "hashValue": "HASH789GHI012JKL"
+          }
+        ]
+      }
+    }
+  ]
+}

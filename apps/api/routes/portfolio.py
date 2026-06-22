@@ -13,6 +13,9 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, status
 
+# ruff: noqa: N815 (camelCase keys are intentional for frontend JSON conventions)
+from pydantic import BaseModel, ConfigDict
+
 from apps.common.composition import Composition, session_factory
 from trading.application.common.unit_of_work import UnitOfWork
 from trading.application.portfolio.refresh_positions import (
@@ -26,7 +29,41 @@ from trading.domain import Account
 router = APIRouter()
 
 
-@router.get("/{account_id}")
+class PositionSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    symbol: str
+    assetClass: str
+    quantity: str
+    averageCost: str
+    marketValue: str
+    unrealizedPnl: str
+
+
+class AccountSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    accountId: str
+    cash: str
+    cashCurrency: str
+    marketValue: str
+    netLiquidation: str
+    buyingPower: str
+    asOf: str | None
+    positions: list[PositionSnapshot]
+
+
+class RefreshPortfolioResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    refreshed_positions_count: int
+    drift_detected: bool
+    drift_details: list[str]
+    refreshed_at: str
+
+
+@router.get("/{account_id}", response_model=AccountSnapshot)
 async def get_account(account_id: str, request: Request) -> dict[str, object]:
     """Return the current account snapshot from the broker."""
     comp: Composition = request.app.state.composition
@@ -40,7 +77,11 @@ async def get_account(account_id: str, request: Request) -> dict[str, object]:
     return _account_to_dict(account)
 
 
-@router.post("/{account_id}/refresh", status_code=status.HTTP_200_OK)
+@router.post(
+    "/{account_id}/refresh",
+    status_code=status.HTTP_200_OK,
+    response_model=RefreshPortfolioResponse,
+)
 async def refresh(account_id: str, request: Request) -> dict[str, object]:
     """Refresh positions for an account. Writes to DB + emits outbox events.
 
@@ -59,6 +100,7 @@ async def refresh(account_id: str, request: Request) -> dict[str, object]:
             session=session,
             clock=comp.clock,
             correlation_id=uuid4(),
+            blob_store=comp.blob_store,
         )
         async with uow:
             try:
