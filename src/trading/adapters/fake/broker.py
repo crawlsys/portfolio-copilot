@@ -255,11 +255,15 @@ def _broker_from_holdings(path: Path) -> FakeBroker:
             sym = Symbol(h["symbol"])
         except ValueError:
             continue  # skip invalid tickers (CUSIPs, preferred-share oddities)
+        qty = Decimal(str(h["quantity"]))
+        total_cost = Decimal(str(h["cost_basis"]))
+        # Domain's average_cost is PER-SHARE; the statement gives total cost basis.
+        per_share_cost = (total_cost / qty).quantize(Decimal("0.0001")) if qty else total_cost
         broker.set_position(
             account_id=snapshot["account_id"],
             symbol=sym,
-            quantity=Decimal(str(h["quantity"])),
-            average_cost=Money.usd(str(h["cost_basis"])),
+            quantity=qty,
+            average_cost=Money.usd(str(per_share_cost)),
             market_value=Money.usd(str(h["market_value"])),
         )
     return broker
