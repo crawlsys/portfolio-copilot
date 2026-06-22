@@ -13,12 +13,14 @@ Two modes:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import httpx
 from sqlalchemy import select
 
 from trading.adapters.persistence.models import (
@@ -257,7 +259,9 @@ async def _generate_llm_summary(
 
     try:
         if provider == "anthropic":
-            return await _call_anthropic(ctx, api_key, model or "claude-sonnet-4-20250514")
+            return await _call_anthropic(ctx, api_key, model or "claude-sonnet-4-20250504")
+        if provider == "litellm":
+            return await _call_litellm(ctx, api_key, model or "local-fast")
         if provider == "openai":
             return await _call_openai(ctx, api_key, model or "gpt-4o")
         # Unknown provider — fall back
@@ -332,6 +336,53 @@ async def _call_openai(ctx: _BriefingContext, api_key: str, model: str) -> tuple
                             "Congressional trade disclosures. You MUST NOT propose "
                             "trades or give investment advice. Surface and "
                             "contextualize only. End with 'PUSH: ' followed by a "
+                            "1-2 sentence push notification excerpt."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        text = data["choices"][0]["message"]["content"]
+
+    push = template_excerpt_fallback(ctx)
+    if "PUSH:" in text:
+        parts = text.rsplit("PUSH:", 1)
+        text = parts[0].rstrip()
+        push = parts[1].strip()
+
+    return text, push
+
+
+async def _call_litellm(ctx: _BriefingContext, api_key: str, model: str) -> tuple[str, str]:
+    """Call a LiteLLM gateway (OpenAI-compatible endpoint).
+
+    The gateway routes to local models (local-strong, local-fast) or any
+    configured provider. Base URL comes from LITELLM_BASE_URL env or defaults
+    to the k3s NodePort.
+    """
+    base_url = os.environ.get("LITELLM_BASE_URL", "http://127.0.0.1:30400")
+    prompt = _build_llm_prompt(ctx)
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            f"{base_url}/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "content-type": "application/json",
+            },
+            json={
+                "model": model,
+                "max_tokens": 2000,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a financial research assistant. Summarize "
+                            "Congressional trade disclosures. You MUST NOT propose "
+                            "trades or give investment advice. Surface and "
+                            "contextualize only. End with PUSH: followed by a "
                             "1-2 sentence push notification excerpt."
                         ),
                     },
