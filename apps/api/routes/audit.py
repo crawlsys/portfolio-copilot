@@ -8,6 +8,7 @@ from typing import Protocol
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.common.composition import Composition, session_factory
 
@@ -58,10 +59,6 @@ class AuditResult(Protocol):
     def mappings(self) -> AuditMappings: ...
 
 
-class AuditSession(Protocol):
-    async def execute(self, statement: object, params: dict[str, object]) -> AuditResult: ...
-
-
 @router.get("/chain/{correlation_id}")
 async def get_audit_chain(correlation_id: str, request: Request) -> dict[str, object]:
     comp: Composition = request.app.state.composition
@@ -99,12 +96,12 @@ async def get_audit_subject(type: str, id: str, request: Request) -> dict[str, o
 
 
 async def _fetch_audit_records(
-    session: AuditSession,
+    session: AsyncSession,
     *,
     statement: object,
     params: dict[str, object],
 ) -> list[dict[str, object]]:
-    result = await session.execute(statement, params)
+    result = await session.execute(statement, params)  # type: ignore[call-overload]
     return [_audit_row_to_dict(row) for row in result.mappings().all()]
 
 
