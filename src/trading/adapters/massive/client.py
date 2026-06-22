@@ -90,7 +90,7 @@ class MassiveClient:
         symbol: Symbol,
         timeframe: str,
         start: datetime,
-        end: datetime | None,
+        end: datetime | None = None,
     ) -> tuple[Bar, ...]:
         multiplier, timespan, _duration = timeframe_to_massive(timeframe)
         to = end or datetime.now(UTC)
@@ -126,6 +126,17 @@ class MassiveClient:
             },
         )
         return parse_ticker_results(payload)
+
+    async def get_vix(self) -> Decimal:
+        """Get the current VIX value from the CBOE Volatility Index."""
+        payload = await self._get("/v2/aggs/ticker/I:VIX/prev")
+        results: list[object] = payload.get("results", [])  # type: ignore[assignment]
+        if not results:
+            return Decimal("0")
+        first = results[0]
+        if isinstance(first, dict):
+            return Decimal(str(first.get("c", 0)))
+        return Decimal("0")
 
     def websocket_stub(self) -> str:
         """Return the planned stock WebSocket URL; streaming is not implemented yet."""

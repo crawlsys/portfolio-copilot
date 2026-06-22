@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from apps.api.routes.audit import router as audit_router
+from apps.api.routes.briefings import router as briefings_router
 from apps.api.routes.congressional import router as congressional_router
 from apps.api.routes.health import router as health_router
 from apps.api.routes.portfolio import router as portfolio_router
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(portfolio_router, prefix="/portfolio", tags=["portfolio"])
     app.include_router(audit_router, prefix="/audit", tags=["audit"])
     app.include_router(congressional_router, prefix="/congressional", tags=["congressional"])
+    app.include_router(briefings_router, prefix="/briefings", tags=["briefings"])
 
     return app
 

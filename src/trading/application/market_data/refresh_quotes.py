@@ -18,7 +18,11 @@ class MarketDataPort(Protocol):
     async def get_quote(self, symbol: Symbol) -> Quote: ...
     async def get_quotes(self, symbols: tuple[Symbol, ...]) -> tuple[Quote, ...]: ...
     async def get_bars(
-        self, symbol: Symbol, timeframe: str, limit: int = 100
+        self,
+        symbol: Symbol,
+        timeframe: str,
+        start: datetime,
+        end: datetime | None = None,
     ) -> tuple[Bar, ...]: ...
     async def get_vix(self) -> Decimal: ...
 
@@ -30,7 +34,13 @@ class NoMarketData:
     async def get_quotes(self, symbols: tuple[Symbol, ...]) -> tuple[Quote, ...]:
         return ()
 
-    async def get_bars(self, symbol: Symbol, timeframe: str, limit: int = 100) -> tuple[Bar, ...]:
+    async def get_bars(
+        self,
+        symbol: Symbol,
+        timeframe: str,
+        start: datetime,
+        end: datetime | None = None,
+    ) -> tuple[Bar, ...]:
         return ()
 
     async def get_vix(self) -> Decimal:
