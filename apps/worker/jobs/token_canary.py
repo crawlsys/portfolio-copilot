@@ -9,7 +9,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from trading.adapters.notifications import CriticalAlert, NotifierPort
+from trading.adapters.notifications import NotifierPort
 from trading.adapters.ports.broker import BrokerPort
 from trading.application.common.clock import ClockPort
 
@@ -38,29 +38,24 @@ async def run_token_canary(
     try:
         await broker.get_accounts()
     except Exception as exc:  # noqa: BLE001 - adapter failures all mean auth canary failed.
-        notifier.send_critical_alert(
-            CriticalAlert(
-                name="schwab_auth_unhealthy",
-                summary="Schwab account canary failed",
-                details={"error": repr(exc)},
-                occurred_at=now,
-            )
+        await notifier.send_critical(
+            "Schwab account canary failed",
+            f"Schwab auth canary failed at {now.isoformat()}: {exc!r}",
+            tags=["schwab", "auth", "critical"],
         )
         return False
 
     if token_expires_at is not None:
         ttl = token_expires_at - now
         if ttl < TOKEN_TTL_ALERT_THRESHOLD:
-            notifier.send_critical_alert(
-                CriticalAlert(
-                    name="schwab_auth_unhealthy",
-                    summary="Schwab refresh token expires in less than 24 hours",
-                    details={
-                        "token_expires_at": token_expires_at.isoformat(),
-                        "ttl_seconds": int(ttl.total_seconds()),
-                    },
-                    occurred_at=now,
-                )
+            await notifier.send_critical(
+                "Schwab refresh token expires soon",
+                (
+                    "Schwab refresh token expires in less than 24 hours. "
+                    f"Expires at {token_expires_at.isoformat()}; "
+                    f"ttl_seconds={int(ttl.total_seconds())}."
+                ),
+                tags=["schwab", "auth", "critical"],
             )
             return False
 

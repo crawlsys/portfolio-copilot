@@ -10,8 +10,9 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from trading.adapters.notifications import CriticalAlert, NotifierPort
+from trading.adapters.notifications import NotifierPort
 from trading.application.common.clock import ClockPort
+from trading.domain import Severity
 
 CONGRESSIONAL_STALE_AFTER = timedelta(hours=48)
 MARKET_DATA_STALE_AFTER = timedelta(minutes=30)
@@ -57,13 +58,11 @@ async def run_pipeline_health(
     if not stalled:
         return True
 
-    notifier.send_critical_alert(
-        CriticalAlert(
-            name="data_pipeline_stalled",
-            summary="Source data has stopped flowing",
-            details=stalled,
-            occurred_at=now,
-        )
+    await notifier.send(
+        "Source data has stopped flowing",
+        f"Data pipeline stalled at {now.isoformat()}: {stalled}",
+        severity=Severity.WARNING,
+        tags=["pipeline", "stale-data"],
     )
     return False
 

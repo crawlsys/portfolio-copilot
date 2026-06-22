@@ -71,6 +71,9 @@ class Settings(BaseSettings):
 
     # Notifications
     push_provider: str = Field(default="")
+    ntfy_server_url: str = Field(default="https://ntfy.sh")
+    ntfy_topic: str = Field(default="")
+    ntfy_auth_token: str = Field(default="")
     push_token: str = Field(default="")
 
 

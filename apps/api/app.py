@@ -31,6 +31,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         s3_bucket=settings.s3_bucket,
         aws_access_key_id=settings.aws_access_key_id,
         aws_secret_access_key=settings.aws_secret_access_key,
+        push_provider=settings.push_provider,
+        ntfy_server_url=settings.ntfy_server_url,
+        ntfy_topic=settings.ntfy_topic,
+        ntfy_auth_token=settings.ntfy_auth_token,
     )
     app.state.composition = comp
     yield

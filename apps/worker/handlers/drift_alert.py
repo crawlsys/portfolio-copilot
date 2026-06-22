@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING
+import asyncio
+import logging
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any
 
-from trading.adapters.notifications import CriticalAlert, NotifierPort
+from trading.adapters.notifications import NotifierPort
 from trading.application.common.event_envelope import EventEnvelope
 from trading.domain import EventType
 
@@ -14,6 +16,8 @@ if TYPE_CHECKING:
 
     from trading.application.common.clock import ClockPort
     from trading.application.common.event_bus import EventBus
+
+_log = logging.getLogger(__name__)
 
 
 def handle_position_drift_alert(
@@ -31,19 +35,18 @@ def handle_position_drift_alert(
     if severity != "CRITICAL":
         return
 
-    notifier.send_critical_alert(
-        CriticalAlert(
-            name="position_drift_critical",
-            summary="Critical broker position drift detected",
-            details={
-                "event_id": str(envelope.id),
-                "aggregate_id": envelope.aggregate_id,
-                "account_id": envelope.payload.get("account_id"),
-                "symbol": envelope.payload.get("symbol"),
-                "drift_kind": envelope.payload.get("drift_kind"),
-                "correlation_id": str(envelope.correlation_id),
-            },
-            occurred_at=clock.now(),
+    symbol = envelope.payload.get("symbol")
+    account_id = envelope.payload.get("account_id")
+    drift_kind = envelope.payload.get("drift_kind")
+    _run_notification(
+        notifier.send_critical(
+            "Critical broker position drift detected",
+            (
+                f"Position drift detected for {symbol} in {account_id}. "
+                f"Kind: {drift_kind}. Event: {envelope.id}. "
+                f"Correlation: {envelope.correlation_id}. At: {clock.now().isoformat()}."
+            ),
+            tags=["portfolio", "drift", "critical"],
         )
     )
 
@@ -68,6 +71,24 @@ def subscribe_drift_alert(
         EventType.POSITION_DRIFT_DETECTED,
         make_position_drift_alert_handler(notifier, clock),
     )
+
+
+def _run_notification(coro: Coroutine[Any, Any, None]) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(coro)
+        return
+
+    task = loop.create_task(coro)
+    task.add_done_callback(_log_notification_failure)
+
+
+def _log_notification_failure(task: asyncio.Task[None]) -> None:
+    try:
+        task.result()
+    except Exception:  # noqa: BLE001 - notification failures should be visible in logs.
+        _log.exception("Position drift notification failed")
 
 
 __all__ = [
