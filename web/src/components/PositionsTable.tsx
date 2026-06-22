@@ -6,6 +6,7 @@ import type { PositionSnapshot } from "@/api/client";
 import {
   formatCurrencyPrecise,
   formatPercent,
+  formatPercentPoints,
   formatQuantity,
   parseDecimal,
 } from "@/lib/format";
@@ -30,8 +31,11 @@ type SortKey =
   | "quantity"
   | "averageCost"
   | "marketValue"
+  | "livePrice"
   | "unrealizedPnl"
-  | "pnlPercent";
+  | "pnlPercent"
+  | "liveUnrealizedPnl"
+  | "priceChangePct";
 
 type SortState = {
   key: SortKey;
@@ -43,8 +47,11 @@ const columns: Array<{ key: SortKey; label: string; align?: "right" }> = [
   { key: "quantity", label: "Quantity", align: "right" },
   { key: "averageCost", label: "Avg Cost", align: "right" },
   { key: "marketValue", label: "Market Value", align: "right" },
+  { key: "livePrice", label: "Live Price", align: "right" },
   { key: "unrealizedPnl", label: "P/L ($)", align: "right" },
   { key: "pnlPercent", label: "P/L (%)", align: "right" },
+  { key: "liveUnrealizedPnl", label: "Live P/L", align: "right" },
+  { key: "priceChangePct", label: "Live P/L %", align: "right" },
 ];
 
 export function PositionsTable({ positions }: PositionsTableProps) {
@@ -135,6 +142,14 @@ export function PositionsTable({ positions }: PositionsTableProps) {
         <TableBody>
           {visiblePositions.map((position) => {
             const pnl = parseDecimal(position.unrealizedPnl);
+            const hasLivePrice = Boolean(position.livePrice);
+            const livePnl = parseDecimal(position.liveUnrealizedPnl);
+            const livePnlClassName = hasLivePrice
+              ? livePnl >= 0
+                ? "text-right tabular-nums text-emerald-400"
+                : "text-right tabular-nums text-rose-400"
+              : "text-right tabular-nums text-muted-foreground";
+            const quoteTooltip = formatQuoteTooltip(position.quoteTime);
             return (
               <TableRow key={position.symbol}>
                 <TableCell className="font-medium text-foreground">
@@ -154,6 +169,16 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                 </TableCell>
                 <TableCell
                   className={
+                    hasLivePrice
+                      ? "text-right tabular-nums"
+                      : "text-right tabular-nums text-muted-foreground"
+                  }
+                  title={quoteTooltip}
+                >
+                  {hasLivePrice ? formatCurrencyPrecise(position.livePrice ?? 0) : "—"}
+                </TableCell>
+                <TableCell
+                  className={
                     pnl >= 0
                       ? "text-right tabular-nums text-emerald-400"
                       : "text-right tabular-nums text-rose-400"
@@ -169,6 +194,17 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                   }
                 >
                   {formatPercent(positionPnlPercent(position))}
+                </TableCell>
+                <TableCell
+                  className={livePnlClassName}
+                  title={quoteTooltip}
+                >
+                  {hasLivePrice
+                    ? formatCurrencyPrecise(position.liveUnrealizedPnl ?? 0)
+                    : "—"}
+                </TableCell>
+                <TableCell className={livePnlClassName} title={quoteTooltip}>
+                  {hasLivePrice ? formatPercentPoints(position.priceChangePct) : "—"}
                 </TableCell>
               </TableRow>
             );
@@ -194,6 +230,22 @@ function sortValue(position: PositionSnapshot, key: SortKey): string | number {
     return positionPnlPercent(position);
   }
   return parseDecimal(position[key]);
+}
+
+function formatQuoteTooltip(value: string | null | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return `Quote ${new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed)}`;
 }
 
 function SortIcon({

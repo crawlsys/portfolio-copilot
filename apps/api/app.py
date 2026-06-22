@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     comp = make_composition(
         broker_mode=settings.broker_mode,
         database_url=settings.database_url,
+        massive_api_key=settings.massive_api_key,
         s3_endpoint_url=settings.s3_endpoint_url,
         s3_bucket=settings.s3_bucket,
         aws_access_key_id=settings.aws_access_key_id,

@@ -15,7 +15,7 @@ export default async function PortfolioPage({ params }: PortfolioPageProps) {
   const accounts = getAccountOptions();
 
   try {
-    const snapshot = await getPortfolio(accountId);
+    const snapshot = await getPortfolio(accountId, { live: true });
     return (
       <AccountDashboard
         accounts={accounts}

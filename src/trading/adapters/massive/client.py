@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -72,18 +73,58 @@ class MassiveClient:
             raise KeyError(f"No quote for {symbol.ticker}") from exc
 
     async def get_quotes(self, symbols: tuple[Symbol, ...]) -> tuple[Quote, ...]:
+        """Batch quotes. Falls back to individual /prev calls on 403 (tier limit)."""
         if not symbols:
             return ()
-        payload = await self._get(
-            "/v2/snapshot/locale/us/markets/stocks/tickers",
-            params={"tickers": ",".join(symbol.ticker for symbol in symbols)},
-        )
-        quotes = parse_snapshot_quotes(payload, symbols)
-        if len(quotes) != len(symbols):
-            found = {quote.symbol.ticker for quote in quotes}
-            missing = [symbol.ticker for symbol in symbols if symbol.ticker not in found]
-            raise KeyError(f"No quote for {', '.join(missing)}")
-        return quotes
+        try:
+            payload = await self._get(
+                "/v2/snapshot/locale/us/markets/stocks/tickers",
+                params={"tickers": ",".join(symbol.ticker for symbol in symbols)},
+            )
+            quotes = parse_snapshot_quotes(payload, symbols)
+            if len(quotes) != len(symbols):
+                found = {quote.symbol.ticker for quote in quotes}
+                missing = [symbol.ticker for symbol in symbols if symbol.ticker not in found]
+                raise KeyError(f"No quote for {', '.join(missing)}")
+            return quotes
+        except MassiveAuthError:
+            return await self._fan_out_prev_quotes(symbols)
+
+    async def _fan_out_prev_quotes(self, symbols: tuple[Symbol, ...]) -> tuple[Quote, ...]:
+        """Per-ticker /prev fallback (works on lower tiers, EOD only)."""
+        results: list[Quote | None] = [None] * len(symbols)
+        for i in range(0, len(symbols), 5):
+            batch = symbols[i : i + 5]
+            tasks = [self._fetch_prev(sym) for sym in batch]
+            completed = await asyncio.gather(*tasks, return_exceptions=True)
+            for j, result in enumerate(completed):
+                if isinstance(result, Quote):
+                    results[i + j] = result
+        return tuple(r for r in results if r is not None)
+
+    async def _fetch_prev(self, symbol: Symbol) -> Quote | None:
+        """Fetch previous close via /v2/aggs/ticker/{symbol}/prev."""
+        try:
+            payload = await self._get(f"/v2/aggs/ticker/{symbol.ticker}/prev")
+            results: list[object] = payload.get("results", [])  # type: ignore[assignment]
+            if not results:
+                return None
+            r = results[0]
+            if not isinstance(r, dict):
+                return None
+            close = Decimal(str(r.get("c", 0)))
+            if close == 0:
+                return None
+            return Quote(
+                symbol=symbol,
+                bid=close,
+                ask=close,
+                last=close,
+                timestamp=datetime.now(UTC),
+                volume=int(r.get("v", 0)) if r.get("v") else None,
+            )
+        except (MassiveError, KeyError, ValueError):
+            return None
 
     async def get_bars(
         self,

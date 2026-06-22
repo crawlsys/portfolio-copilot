@@ -39,7 +39,7 @@ async function loadFirstAvailablePortfolio(
     try {
       return {
         accountId,
-        snapshot: await getPortfolio(accountId),
+        snapshot: await getPortfolio(accountId, { live: true }),
         error: undefined,
       };
     } catch (error) {

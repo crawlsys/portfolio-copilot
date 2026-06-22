@@ -38,6 +38,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/briefings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Briefings
+         * @description List recent briefings, newest first.
+         */
+        get: operations["list_briefings_briefings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/briefings/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Briefing
+         * @description Get the most recent briefing.
+         */
+        get: operations["get_latest_briefing_briefings_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/briefings/{briefing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Briefing
+         * @description Get a single briefing by ID.
+         */
+        get: operations["get_briefing_briefings__briefing_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/congressional/disclosures": {
         parameters: {
             query?: never;
@@ -237,6 +297,10 @@ export interface components {
             cash: string;
             /** Cashcurrency */
             cashCurrency: string;
+            /** Livedaypnl */
+            liveDayPnl?: string | null;
+            /** Livenetliquidation */
+            liveNetLiquidation?: string | null;
             /** Marketvalue */
             marketValue: string;
             /** Netliquidation */
@@ -376,10 +440,20 @@ export interface components {
             assetClass: string;
             /** Averagecost */
             averageCost: string;
+            /** Livemarketvalue */
+            liveMarketValue?: string | null;
+            /** Liveprice */
+            livePrice?: string | null;
+            /** Liveunrealizedpnl */
+            liveUnrealizedPnl?: string | null;
             /** Marketvalue */
             marketValue: string;
+            /** Pricechangepct */
+            priceChangePct?: string | null;
             /** Quantity */
             quantity: string;
+            /** Quotetime */
+            quoteTime?: string | null;
             /** Symbol */
             symbol: string;
             /** Unrealizedpnl */
@@ -460,6 +534,94 @@ export interface operations {
             path: {
                 type: string;
                 id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_briefings_briefings_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_briefing_briefings_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_briefing_briefings__briefing_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                briefing_id: string;
             };
             cookie?: never;
         };
@@ -678,7 +840,9 @@ export interface operations {
     };
     get_account_portfolio__account_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                live?: boolean;
+            };
             header?: never;
             path: {
                 account_id: string;

@@ -31,6 +31,28 @@
             "title": "Cashcurrency",
             "type": "string"
           },
+          "liveDayPnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Livedaypnl"
+          },
+          "liveNetLiquidation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Livenetliquidation"
+          },
           "marketValue": {
             "title": "Marketvalue",
             "type": "string"
@@ -527,13 +549,68 @@
             "title": "Averagecost",
             "type": "string"
           },
+          "liveMarketValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Livemarketvalue"
+          },
+          "livePrice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liveprice"
+          },
+          "liveUnrealizedPnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liveunrealizedpnl"
+          },
           "marketValue": {
             "title": "Marketvalue",
             "type": "string"
           },
+          "priceChangePct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricechangepct"
+          },
           "quantity": {
             "title": "Quantity",
             "type": "string"
+          },
+          "quoteTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quotetime"
           },
           "symbol": {
             "title": "Symbol",
@@ -735,6 +812,124 @@
         "summary": "Get Audit Subject",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/briefings": {
+      "get": {
+        "description": "List recent briefings, newest first.",
+        "operationId": "list_briefings_briefings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Briefings Briefings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Briefings",
+        "tags": [
+          "briefings"
+        ]
+      }
+    },
+    "/briefings/latest": {
+      "get": {
+        "description": "Get the most recent briefing.",
+        "operationId": "get_latest_briefing_briefings_latest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Latest Briefing Briefings Latest Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Latest Briefing",
+        "tags": [
+          "briefings"
+        ]
+      }
+    },
+    "/briefings/{briefing_id}": {
+      "get": {
+        "description": "Get a single briefing by ID.",
+        "operationId": "get_briefing_briefings__briefing_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "briefing_id",
+            "required": true,
+            "schema": {
+              "title": "Briefing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Briefing Briefings  Briefing Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Briefing",
+        "tags": [
+          "briefings"
         ]
       }
     },
@@ -1050,6 +1245,16 @@
             "schema": {
               "title": "Account Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "live",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Live",
+              "type": "boolean"
             }
           }
         ],

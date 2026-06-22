@@ -35,12 +35,16 @@ export const apiClient = createClient<paths>({
   fetch: noStoreFetch,
 });
 
-export async function getPortfolio(accountId: string): Promise<AccountSnapshot> {
+export async function getPortfolio(
+  accountId: string,
+  options: { live?: boolean } = {},
+): Promise<AccountSnapshot> {
   const { data, error, response } = await apiClient.GET("/portfolio/{account_id}", {
     params: {
       path: {
         account_id: accountId,
       },
+      query: options.live ? { live: true } : undefined,
     },
   });
 

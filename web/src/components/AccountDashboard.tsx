@@ -26,6 +26,12 @@ export function AccountDashboard({
 }: AccountDashboardProps) {
   const positions = snapshot?.positions ?? [];
   const aggregatePnl = totalUnrealizedPnl(positions);
+  const hasLiveValue = Boolean(snapshot?.liveNetLiquidation);
+  const livePnl = snapshot?.liveDayPnl ? Number(snapshot.liveDayPnl) : undefined;
+  const showLiveBadge = hasFreshLiveQuote(positions);
+  const kpiGridClassName = hasLiveValue
+    ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-6"
+    : "grid gap-3 sm:grid-cols-2 xl:grid-cols-5";
 
   return (
     <main className="min-h-screen bg-background">
@@ -53,9 +59,16 @@ export function AccountDashboard({
           </section>
         ) : null}
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className={kpiGridClassName}>
+          {hasLiveValue ? (
+            <AccountKpiCard
+              label="Live Value"
+              value={formatCurrency(snapshot?.liveNetLiquidation ?? 0)}
+              live={showLiveBadge}
+            />
+          ) : null}
           <AccountKpiCard
-            label="Net Liquidation"
+            label={hasLiveValue ? "Statement Value" : "Net Liquidation"}
             value={formatCurrency(snapshot?.netLiquidation ?? 0)}
           />
           <AccountKpiCard label="Cash" value={formatCurrency(snapshot?.cash ?? 0)} />
@@ -65,8 +78,8 @@ export function AccountDashboard({
           />
           <AccountKpiCard
             label="Day P/L"
-            value={formatCurrency(aggregatePnl)}
-            trend={aggregatePnl}
+            value={formatCurrency(livePnl ?? aggregatePnl)}
+            trend={livePnl ?? aggregatePnl}
           />
           <AccountKpiCard
             label="Buying Power"
@@ -81,4 +94,23 @@ export function AccountDashboard({
       </div>
     </main>
   );
+}
+
+function hasFreshLiveQuote(positions: AccountSnapshot["positions"]): boolean {
+  const newestQuoteAt = positions.reduce<number | undefined>((newest, position) => {
+    if (!position.quoteTime) {
+      return newest;
+    }
+    const timestamp = new Date(position.quoteTime).getTime();
+    if (!Number.isFinite(timestamp)) {
+      return newest;
+    }
+    return newest === undefined ? timestamp : Math.max(newest, timestamp);
+  }, undefined);
+
+  if (newestQuoteAt === undefined) {
+    return false;
+  }
+
+  return Date.now() - newestQuoteAt <= 15 * 60 * 1000;
 }
