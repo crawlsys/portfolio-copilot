@@ -1,3 +1,6 @@
-api: uv run uvicorn apps.api.app:create_app --factory --reload --port 8000
-worker: uv run python -m apps.worker
-web: pnpm --dir web dev
+# Tracker dev processes. Ports chosen to avoid collisions with:
+#   :3000 = codeman (orchestration tool)
+#   :8000 = other uvicorn service (app.main:app)
+api: DATABASE_URL=postgresql+psycopg://tracker:tracker@localhost:5432/tracker BROKER_MODE=fake ALLOW_LIVE_TRADING=false uv run uvicorn apps.api.app:create_app --factory --port 8001 --reload
+worker: DATABASE_URL=postgresql+psycopg://tracker:tracker@localhost:5432/tracker uv run python -m apps.worker
+web: pnpm --dir web dev --port 3001
