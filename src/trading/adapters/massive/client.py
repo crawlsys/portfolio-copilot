@@ -82,10 +82,7 @@ class MassiveClient:
                 params={"tickers": ",".join(symbol.ticker for symbol in symbols)},
             )
             quotes = parse_snapshot_quotes(payload, symbols)
-            if len(quotes) != len(symbols):
-                found = {quote.symbol.ticker for quote in quotes}
-                missing = [symbol.ticker for symbol in symbols if symbol.ticker not in found]
-                raise KeyError(f"No quote for {', '.join(missing)}")
+            # Return whatever we got — missing tickers just don't get enriched.
             return quotes
         except MassiveAuthError:
             return await self._fan_out_prev_quotes(symbols)

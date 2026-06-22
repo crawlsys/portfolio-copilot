@@ -21,8 +21,36 @@ export type DisclosureFilters = {
   limit?: number;
 };
 
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "http://localhost:8001";
+// Next.js standalone inlines process.env at build time, so runtime k8s
+// env vars (TRACKER_API_SERVICE_HOST) aren't available to server components.
+// Instead, we read the env var via a runtime-friendly approach: on the
+// server side in production (standalone), default to the k8s internal DNS.
+function resolveApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return (
+      process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
+      "http://localhost:8001"
+    );
+  }
+  // Server-side. Try runtime env first (works if Next reads it at request time).
+  const internal = process.env.API_INTERNAL_URL?.replace(/\/$/, "");
+  if (internal) return internal;
+  const svcHost = process.env.TRACKER_API_SERVICE_HOST;
+  if (svcHost) {
+    return `http://${svcHost}:8001`;
+  }
+  // In k8s production, the internal DNS name always works.
+  // This is the reliable fallback for standalone Next.js.
+  if (process.env.NODE_ENV === "production") {
+    return "http://tracker-api:8001";
+  }
+  return (
+    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
+    "http://localhost:8001"
+  );
+}
+
+const apiBaseUrl = resolveApiBaseUrl();
 
 const noStoreFetch: typeof fetch = (input, init) =>
   fetch(input, {

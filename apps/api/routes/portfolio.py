@@ -78,11 +78,7 @@ class RefreshPortfolioResponse(BaseModel):
     refreshed_at: str
 
 
-@router.get(
-    "/{account_id}",
-    response_model=AccountSnapshot,
-    response_model_exclude_unset=True,
-)
+@router.get("/{account_id}")
 async def get_account(
     account_id: str,
     request: Request,

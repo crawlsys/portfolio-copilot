@@ -34,15 +34,23 @@ def parse_snapshot_ticker(payload: Mapping[str, object], symbol: Symbol | None =
 
     ticker = _str(payload.get("ticker"), "ticker")
     quote_symbol = symbol or Symbol(ticker)
-    quote = _mapping(payload.get("lastQuote"), "lastQuote")
+    quote = _optional_mapping(payload.get("lastQuote"))
     trade = _optional_mapping(payload.get("lastTrade"))
     day = _optional_mapping(payload.get("day"))
 
-    bid = _decimal(quote.get("p"), "lastQuote.p")
-    ask = _decimal(quote.get("P"), "lastQuote.P")
-    last = _decimal(trade.get("p"), "lastTrade.p") if trade is not None else (bid + ask) / 2
-
-    timestamp_ns = _optional_int(quote.get("t"))
+    # lastQuote can be None on lower tiers (Starter sometimes omits it).
+    # Fall back to day.close if available.
+    if quote is not None:
+        bid = _decimal(quote.get("p"), "lastQuote.p")
+        ask = _decimal(quote.get("P"), "lastQuote.P")
+        last = _decimal(trade.get("p"), "lastTrade.p") if trade is not None else (bid + ask) / 2
+        timestamp_ns = _optional_int(quote.get("t"))
+    elif day is not None:
+        close = _decimal(day.get("c"), "day.c")
+        bid = ask = last = close
+        timestamp_ns = _optional_int(day.get("t"))
+    else:
+        raise TypeError("Massive snapshot has no lastQuote and no day data")
     if trade is not None:
         trade_ts = _optional_int(trade.get("t"))
         if trade_ts is not None and (timestamp_ns is None or trade_ts > timestamp_ns):

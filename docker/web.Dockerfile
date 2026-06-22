@@ -9,6 +9,8 @@ COPY web/package.json web/pnpm-lock.yaml* ./
 RUN pnpm install --no-frozen-lockfile
 COPY web/ .
 ARG NEXT_PUBLIC_API_BASE_URL=https://tracker.example.com
+ARG API_INTERNAL_URL=http://tracker-api:8001
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
