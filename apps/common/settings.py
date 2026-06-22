@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     ntfy_server_url: str = Field(default="https://ntfy.sh")
     ntfy_topic: str = Field(default="")
     ntfy_auth_token: str = Field(default="")
+    pushover_api_token: str = Field(default="")
+    pushover_user_key: str = Field(default="")
     push_token: str = Field(default="")
 
 

@@ -6,6 +6,7 @@ import logging
 
 import httpx
 
+from trading.adapters.notifications.protocol import CriticalAlert
 from trading.domain import Severity
 
 _log = logging.getLogger(__name__)
@@ -68,6 +69,18 @@ class NtfyNotifier:
             extra={"notification_title": title, "tags": tags or [], "click_url": click_url},
         )
         await self.send(title, body, severity=Severity.CRITICAL, tags=tags, click_url=click_url)
+
+    async def send_critical_alert(self, alert: CriticalAlert) -> None:
+        """Push a structured CriticalAlert at high priority."""
+        body_lines = [alert.summary]
+        for key, value in alert.details.items():
+            body_lines.append(f"  {key}: {value}")
+        await self.send(
+            title=f"🚨 {alert.name}",
+            body="\n".join(body_lines),
+            severity=Severity.CRITICAL,
+            tags=["rotating_light", alert.name],
+        )
 
     async def aclose(self) -> None:
         if self._client is not None and self._owns_client:

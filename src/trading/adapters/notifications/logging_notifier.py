@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 
+from trading.adapters.notifications.protocol import CriticalAlert
 from trading.domain import Severity
 
 
@@ -53,6 +54,13 @@ class LoggingNotifier:
             extra={"notification_title": title, "tags": tags or [], "click_url": click_url},
         )
         await self.send(title, body, severity=Severity.CRITICAL, tags=tags, click_url=click_url)
+
+    async def send_critical_alert(self, alert: CriticalAlert) -> None:
+        """Log a structured CriticalAlert."""
+        body_lines = [alert.summary]
+        for key, value in alert.details.items():
+            body_lines.append(f"  {key}: {value}")
+        self._logger.critical("ALERT [%s]: %s", alert.name, "\n".join(body_lines))
 
 
 def _level_for_severity(severity: Severity) -> int:
