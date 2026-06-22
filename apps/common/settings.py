@@ -2,13 +2,18 @@
 
 NEVER import this from trading.domain or trading.application — settings
 are an adapter/composition concern (per architecture rules).
+
+A `@field_validator(mode="before")` strips inline comments + whitespace from
+every value, so `.env` files with trailing `# comment` text don't break
+pydantic's strict bool/int parsers.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +21,22 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _strip_inline_comments(cls, v: Any) -> Any:
+        """Strip trailing ' # comment' from string values + trim whitespace.
+
+        Handles `.env` lines like `ALLOW_LIVE_TRADING=false  # always false in v1`
+        that would otherwise fail pydantic's strict bool parser.
+        """
+        if isinstance(v, str):
+            # Cut at the first ' #' or '\t#' sequence (a comment with leading ws).
+            for sep in (" #", "\t#"):
+                if sep in v:
+                    v = v.split(sep, 1)[0]
+            return v.strip()
+        return v
 
     # App
     app_env: str = Field(default="dev")
