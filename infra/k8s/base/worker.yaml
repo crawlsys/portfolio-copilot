@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracker-worker
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tracker
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tracker
+        app.kubernetes.io/component: worker
+    spec:
+      containers:
+        - name: worker
+          image: harbor.example.com/tracker/tracker-backend:latest
+          imagePullPolicy: Always
+          command:
+            - python
+            - -m
+            - apps.worker
+          envFrom:
+            - secretRef:
+                name: tracker-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

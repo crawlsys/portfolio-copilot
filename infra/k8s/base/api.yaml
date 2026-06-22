@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracker-api
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tracker
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tracker
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: harbor.example.com/tracker/tracker-backend:latest
+          imagePullPolicy: Always
+          command:
+            - uvicorn
+            - apps.api.app:create_app
+            - --factory
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8001"
+          envFrom:
+            - secretRef:
+                name: tracker-secrets
+          ports:
+            - name: http
+              containerPort: 8001
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracker-api
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 8001
+      targetPort: http
