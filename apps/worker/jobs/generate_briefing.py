@@ -16,6 +16,7 @@ from sqlalchemy.pool import NullPool
 from apps.common.settings import get_settings
 from trading.application.common.clock import SystemClock
 from trading.application.common.unit_of_work import UnitOfWork
+from trading.domain import Severity
 from trading.application.market_data.refresh_quotes import MarketDataPort, NoMarketData
 from trading.application.signals.generate_briefing import (
     GenerateBriefingCommand,
@@ -74,6 +75,30 @@ async def run_briefing() -> None:
             "llm" if settings.llm_api_key else "template",
         )
         _log.info("push excerpt: %s", result.push_excerpt)
+
+        # Push the briefing excerpt via Pushover (if configured)
+        if settings.push_provider == "pushover" and settings.pushover_api_token:
+            from trading.adapters.notifications.pushover import PushoverNotifier  # noqa: PLC0415
+
+            notifier = PushoverNotifier(
+                api_token=settings.pushover_api_token,
+                user_key=settings.pushover_user_key,
+            )
+            overlap_note = (
+                f" {result.portfolio_overlaps} overlap(s) with your portfolio."
+                if result.portfolio_overlaps
+                else ""
+            )
+            await notifier.send(
+                title=f"📊 Daily Briefing — {result.briefing_date.isoformat()}",
+                body=f"{result.disclosures_count} new disclosure(s).{overlap_note} "
+                f"Regime: {result.market_regime}.\n\n{result.push_excerpt}",
+                severity=Severity.INFO,
+                tags=["briefing", "congress"],
+                click_url=None,  # TODO: dashboard URL when deployed
+            )
+            await notifier.aclose()
+            _log.info("briefing pushed via Pushover")
     finally:
         await engine.dispose()
 
