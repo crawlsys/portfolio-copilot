@@ -60,6 +60,264 @@
         "title": "AccountSnapshot",
         "type": "object"
       },
+      "DisclosureDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "amountRangeHigh": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amountrangehigh"
+          },
+          "amountRangeLow": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amountrangelow"
+          },
+          "assetClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetclass"
+          },
+          "assetDescription": {
+            "title": "Assetdescription",
+            "type": "string"
+          },
+          "currentPrice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentprice"
+          },
+          "disclosureDate": {
+            "title": "Disclosuredate",
+            "type": "string"
+          },
+          "filingId": {
+            "title": "Filingid",
+            "type": "string"
+          },
+          "inPortfolio": {
+            "title": "Inportfolio",
+            "type": "boolean"
+          },
+          "ingestedAt": {
+            "title": "Ingestedat",
+            "type": "string"
+          },
+          "lagDays": {
+            "title": "Lagdays",
+            "type": "integer"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberId": {
+            "title": "Memberid",
+            "type": "string"
+          },
+          "memberName": {
+            "title": "Membername",
+            "type": "string"
+          },
+          "rawBlobKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rawblobkey"
+          },
+          "recentMemberDisclosures": {
+            "items": {
+              "$ref": "#/components/schemas/DisclosureSummary"
+            },
+            "title": "Recentmemberdisclosures",
+            "type": "array"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "transactionDate": {
+            "title": "Transactiondate",
+            "type": "string"
+          },
+          "transactionType": {
+            "title": "Transactiontype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filingId",
+          "memberId",
+          "memberName",
+          "member",
+          "symbol",
+          "assetClass",
+          "assetDescription",
+          "transactionType",
+          "transactionDate",
+          "disclosureDate",
+          "amountRangeLow",
+          "amountRangeHigh",
+          "lagDays",
+          "currentPrice",
+          "inPortfolio",
+          "rawBlobKey",
+          "ingestedAt",
+          "recentMemberDisclosures"
+        ],
+        "title": "DisclosureDetail",
+        "type": "object"
+      },
+      "DisclosureSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "amountRangeHigh": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amountrangehigh"
+          },
+          "amountRangeLow": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amountrangelow"
+          },
+          "assetClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetclass"
+          },
+          "assetDescription": {
+            "title": "Assetdescription",
+            "type": "string"
+          },
+          "disclosureDate": {
+            "title": "Disclosuredate",
+            "type": "string"
+          },
+          "filingId": {
+            "title": "Filingid",
+            "type": "string"
+          },
+          "lagDays": {
+            "title": "Lagdays",
+            "type": "integer"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberId": {
+            "title": "Memberid",
+            "type": "string"
+          },
+          "memberName": {
+            "title": "Membername",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "transactionDate": {
+            "title": "Transactiondate",
+            "type": "string"
+          },
+          "transactionType": {
+            "title": "Transactiontype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filingId",
+          "memberId",
+          "memberName",
+          "member",
+          "symbol",
+          "assetClass",
+          "assetDescription",
+          "transactionType",
+          "transactionDate",
+          "disclosureDate",
+          "amountRangeLow",
+          "amountRangeHigh",
+          "lagDays"
+        ],
+        "title": "DisclosureSummary",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -71,6 +329,191 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MemberDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "chamber": {
+            "title": "Chamber",
+            "type": "string"
+          },
+          "committees": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Committees",
+            "type": "array"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "memberId": {
+            "title": "Memberid",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "recentDisclosures": {
+            "items": {
+              "$ref": "#/components/schemas/DisclosureSummary"
+            },
+            "title": "Recentdisclosures",
+            "type": "array"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "required": [
+          "memberId",
+          "name",
+          "chamber",
+          "party",
+          "state",
+          "district",
+          "committees",
+          "recentDisclosures"
+        ],
+        "title": "MemberDetail",
+        "type": "object"
+      },
+      "MemberSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "chamber": {
+            "title": "Chamber",
+            "type": "string"
+          },
+          "committees": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Committees",
+            "type": "array"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "memberId": {
+            "title": "Memberid",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "required": [
+          "memberId",
+          "name",
+          "chamber",
+          "party",
+          "state",
+          "district",
+          "committees"
+        ],
+        "title": "MemberSummary",
+        "type": "object"
+      },
+      "PortfolioOverlapItem": {
+        "additionalProperties": false,
+        "properties": {
+          "disclosures": {
+            "items": {
+              "$ref": "#/components/schemas/DisclosureSummary"
+            },
+            "title": "Disclosures",
+            "type": "array"
+          },
+          "memberCount": {
+            "title": "Membercount",
+            "type": "integer"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PortfolioPositionSummary"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "position",
+          "memberCount",
+          "disclosures"
+        ],
+        "title": "PortfolioOverlapItem",
+        "type": "object"
+      },
+      "PortfolioPositionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "marketValue": {
+            "title": "Marketvalue",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "quantity",
+          "marketValue"
+        ],
+        "title": "PortfolioPositionSummary",
         "type": "object"
       },
       "PositionSnapshot": {
@@ -292,6 +735,267 @@
         "summary": "Get Audit Subject",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/congressional/disclosures": {
+      "get": {
+        "description": "Return recent disclosures with optional member, ticker, and date filters.",
+        "operationId": "list_disclosures_congressional_disclosures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "member",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Member"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DisclosureSummary"
+                  },
+                  "title": "Response List Disclosures Congressional Disclosures Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Disclosures",
+        "tags": [
+          "congressional"
+        ]
+      }
+    },
+    "/congressional/disclosures/{filing_id}": {
+      "get": {
+        "description": "Return full disclosure detail, including portfolio and quote context.",
+        "operationId": "get_disclosure_congressional_disclosures__filing_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "filing_id",
+            "required": true,
+            "schema": {
+              "title": "Filing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisclosureDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Disclosure",
+        "tags": [
+          "congressional"
+        ]
+      }
+    },
+    "/congressional/members": {
+      "get": {
+        "description": "Return congressional member reference data.",
+        "operationId": "list_members_congressional_members_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberSummary"
+                  },
+                  "title": "Response List Members Congressional Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Members",
+        "tags": [
+          "congressional"
+        ]
+      }
+    },
+    "/congressional/members/{member_id}": {
+      "get": {
+        "description": "Return one member and their recent disclosures.",
+        "operationId": "get_member_congressional_members__member_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Member",
+        "tags": [
+          "congressional"
+        ]
+      }
+    },
+    "/congressional/portfolio-overlap": {
+      "get": {
+        "description": "Return recent Congressional disclosures that touch current portfolio tickers.",
+        "operationId": "get_portfolio_overlap_congressional_portfolio_overlap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 300,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PortfolioOverlapItem"
+                  },
+                  "title": "Response Get Portfolio Overlap Congressional Portfolio Overlap Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Portfolio Overlap",
+        "tags": [
+          "congressional"
         ]
       }
     },

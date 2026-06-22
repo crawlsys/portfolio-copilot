@@ -38,6 +38,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/congressional/disclosures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Disclosures
+         * @description Return recent disclosures with optional member, ticker, and date filters.
+         */
+        get: operations["list_disclosures_congressional_disclosures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/congressional/disclosures/{filing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Disclosure
+         * @description Return full disclosure detail, including portfolio and quote context.
+         */
+        get: operations["get_disclosure_congressional_disclosures__filing_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/congressional/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description Return congressional member reference data.
+         */
+        get: operations["list_members_congressional_members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/congressional/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Member
+         * @description Return one member and their recent disclosures.
+         */
+        get: operations["get_member_congressional_members__member_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/congressional/portfolio-overlap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Portfolio Overlap
+         * @description Return recent Congressional disclosures that touch current portfolio tickers.
+         */
+        get: operations["get_portfolio_overlap_congressional_portfolio_overlap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -144,10 +244,131 @@ export interface components {
             /** Positions */
             positions: components["schemas"]["PositionSnapshot"][];
         };
+        /** DisclosureDetail */
+        DisclosureDetail: {
+            /** Amountrangehigh */
+            amountRangeHigh: number | null;
+            /** Amountrangelow */
+            amountRangeLow: number | null;
+            /** Assetclass */
+            assetClass: string | null;
+            /** Assetdescription */
+            assetDescription: string;
+            /** Currentprice */
+            currentPrice: string | null;
+            /** Disclosuredate */
+            disclosureDate: string;
+            /** Filingid */
+            filingId: string;
+            /** Inportfolio */
+            inPortfolio: boolean;
+            /** Ingestedat */
+            ingestedAt: string;
+            /** Lagdays */
+            lagDays: number;
+            member: components["schemas"]["MemberSummary"] | null;
+            /** Memberid */
+            memberId: string;
+            /** Membername */
+            memberName: string;
+            /** Rawblobkey */
+            rawBlobKey: string | null;
+            /** Recentmemberdisclosures */
+            recentMemberDisclosures: components["schemas"]["DisclosureSummary"][];
+            /** Symbol */
+            symbol: string | null;
+            /** Transactiondate */
+            transactionDate: string;
+            /** Transactiontype */
+            transactionType: string;
+        };
+        /** DisclosureSummary */
+        DisclosureSummary: {
+            /** Amountrangehigh */
+            amountRangeHigh: number | null;
+            /** Amountrangelow */
+            amountRangeLow: number | null;
+            /** Assetclass */
+            assetClass: string | null;
+            /** Assetdescription */
+            assetDescription: string;
+            /** Disclosuredate */
+            disclosureDate: string;
+            /** Filingid */
+            filingId: string;
+            /** Lagdays */
+            lagDays: number;
+            member: components["schemas"]["MemberSummary"] | null;
+            /** Memberid */
+            memberId: string;
+            /** Membername */
+            memberName: string;
+            /** Symbol */
+            symbol: string | null;
+            /** Transactiondate */
+            transactionDate: string;
+            /** Transactiontype */
+            transactionType: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** MemberDetail */
+        MemberDetail: {
+            /** Chamber */
+            chamber: string;
+            /** Committees */
+            committees: string[];
+            /** District */
+            district: string | null;
+            /** Memberid */
+            memberId: string;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Recentdisclosures */
+            recentDisclosures: components["schemas"]["DisclosureSummary"][];
+            /** State */
+            state: string | null;
+        };
+        /** MemberSummary */
+        MemberSummary: {
+            /** Chamber */
+            chamber: string;
+            /** Committees */
+            committees: string[];
+            /** District */
+            district: string | null;
+            /** Memberid */
+            memberId: string;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** State */
+            state: string | null;
+        };
+        /** PortfolioOverlapItem */
+        PortfolioOverlapItem: {
+            /** Disclosures */
+            disclosures: components["schemas"]["DisclosureSummary"][];
+            /** Membercount */
+            memberCount: number;
+            position: components["schemas"]["PortfolioPositionSummary"];
+            /** Symbol */
+            symbol: string;
+        };
+        /** PortfolioPositionSummary */
+        PortfolioPositionSummary: {
+            /** Marketvalue */
+            marketValue: string;
+            /** Quantity */
+            quantity: string;
+            /** Symbol */
+            symbol: string;
         };
         /** PositionSnapshot */
         PositionSnapshot: {
@@ -253,6 +474,153 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_disclosures_congressional_disclosures_get: {
+        parameters: {
+            query?: {
+                member?: string | null;
+                symbol?: string | null;
+                since?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisclosureSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_disclosure_congressional_disclosures__filing_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisclosureDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_members_congressional_members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberSummary"][];
+                };
+            };
+        };
+    };
+    get_member_congressional_members__member_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portfolio_overlap_congressional_portfolio_overlap_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOverlapItem"][];
                 };
             };
             /** @description Validation Error */

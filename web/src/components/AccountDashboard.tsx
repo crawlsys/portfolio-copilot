@@ -7,6 +7,7 @@ import { AccountSelector } from "@/components/AccountSelector";
 import { HoldingsDonutChart } from "@/components/HoldingsDonutChart";
 import { PositionsTable } from "@/components/PositionsTable";
 import { RefreshButton } from "@/components/RefreshButton";
+import { SiteNav } from "@/components/SiteNav";
 
 type AccountDashboardProps = {
   accounts: AccountOption[];
@@ -40,6 +41,7 @@ export function AccountDashboard({
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <SiteNav />
             <AccountSelector accounts={accounts} selectedAccountId={selectedAccountId} />
             {showRefresh ? <RefreshButton accountId={selectedAccountId} /> : null}
           </div>
