@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from trading.adapters.persistence.models import TradeDisclosureRow
 from trading.domain import (
@@ -151,24 +152,28 @@ async def _find_existing_filing_ids(
 async def _insert_disclosure(
     session: AsyncSession, disclosure: TradeDisclosure, now: datetime
 ) -> None:
-    """Insert a disclosure row. Immutable — no upsert needed, dedupe is by filing_id."""
-    session.add(
-        TradeDisclosureRow(
-            filing_id=disclosure.filing_id,
-            member_id=disclosure.member_id,
-            member_name=disclosure.member_name,
-            symbol=disclosure.symbol.ticker if disclosure.symbol else None,
-            asset_class="EQUITY",  # Quiver doesn't distinguish; refine later
-            asset_description=disclosure.asset_description,
-            transaction_type=disclosure.transaction_type.name,
-            transaction_date=disclosure.transaction_date,
-            disclosure_date=disclosure.disclosure_date,
-            amount_range_low=disclosure.amount_range_low,
-            amount_range_high=disclosure.amount_range_high,
-            raw_blob_key=disclosure.raw_blob_key,
-            ingested_at=now,
-        )
+    """Insert a disclosure row. ON CONFLICT DO NOTHING — dedupes by filing_id.
+
+    Handles both cross-batch dups (already in DB) AND intra-batch dups
+    (Quiver returns the same filing_id twice across pages).
+    """
+    stmt = pg_insert(TradeDisclosureRow).values(
+        filing_id=disclosure.filing_id,
+        member_id=disclosure.member_id,
+        member_name=disclosure.member_name,
+        symbol=disclosure.symbol.ticker if disclosure.symbol else None,
+        asset_class="EQUITY",
+        asset_description=disclosure.asset_description,
+        transaction_type=disclosure.transaction_type.name,
+        transaction_date=disclosure.transaction_date,
+        disclosure_date=disclosure.disclosure_date,
+        amount_range_low=disclosure.amount_range_low,
+        amount_range_high=disclosure.amount_range_high,
+        raw_blob_key=disclosure.raw_blob_key,
+        ingested_at=now,
     )
+    stmt = stmt.on_conflict_do_nothing(index_elements=["filing_id"])
+    await session.execute(stmt)
 
 
 def _make_disclosure_event(disclosure: TradeDisclosure, now: datetime) -> DomainEvent:
