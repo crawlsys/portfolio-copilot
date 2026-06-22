@@ -5,16 +5,16 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
+from apps.common.settings import get_settings
 from trading.adapters.persistence.models import BriefingRow
 
 router = APIRouter()
 
 
 def _get_sync_session(request: Request) -> Any:
-    from sqlalchemy import create_engine  # noqa: PLC0415
-    from sqlalchemy.orm import Session  # noqa: PLC0415
 
     comp = request.app.state.composition
     if comp.engine is None:
@@ -22,7 +22,9 @@ def _get_sync_session(request: Request) -> Any:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="DATABASE_URL not configured.",
         )
-    sync_url = str(comp.engine.url).replace("+psycopg_async", "+psycopg")
+
+    settings = get_settings()
+    sync_url = settings.database_url
     return Session(create_engine(sync_url))
 
 
