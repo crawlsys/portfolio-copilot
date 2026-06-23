@@ -18,10 +18,19 @@ spec:
         app.kubernetes.io/name: tracker
         app.kubernetes.io/component: worker
     spec:
+      volumes:
+        - name: holdings
+          configMap:
+            name: tracker-holdings
       containers:
         - name: worker
           image: harbor.example.com/tracker/tracker-backend:latest
           imagePullPolicy: Always
+          volumeMounts:
+            - name: holdings
+              mountPath: /app/data/holdings.json
+              subPath: holdings.json
+              readOnly: true
           command:
             - python
             - -m

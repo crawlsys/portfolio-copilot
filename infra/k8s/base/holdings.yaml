@@ -1,0 +1,27 @@
+# Runtime holdings ConfigMap.
+#
+# holdings.json changes on every trade, so it must NOT be baked into the
+# Docker image — the k3s nodes' containerd can serve stale image layers
+# across rebuilds. Mounting from a ConfigMap makes updates a one-shot:
+#
+#   kubectl create configmap tracker-holdings -n tracker \
+#     --from-file=holdings.json=data/holdings.json \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# Then POST /portfolio/{account_id}/refresh to reconcile the DB.
+#
+# The ConfigMap is intentionally NOT committed with embedded data — it's
+# regenerated from data/holdings.json on the operator's machine so the
+# source of truth stays the repo's data/holdings.json.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracker-holdings
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: holdings
+  annotations:
+    # operator: regenerate with the kubectl create command above before apply
+    tracker.example.com/regenerate: "kubectl-create-from-data-holdings.json"
+data: {}

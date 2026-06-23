@@ -18,10 +18,19 @@ spec:
         app.kubernetes.io/name: tracker
         app.kubernetes.io/component: api
     spec:
+      volumes:
+        - name: holdings
+          configMap:
+            name: tracker-holdings
       containers:
         - name: api
           image: harbor.example.com/tracker/tracker-backend:latest
           imagePullPolicy: Always
+          volumeMounts:
+            - name: holdings
+              mountPath: /app/data/holdings.json
+              subPath: holdings.json
+              readOnly: true
           command:
             - uvicorn
             - apps.api.app:create_app
