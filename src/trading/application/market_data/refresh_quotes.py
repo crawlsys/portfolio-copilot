@@ -78,7 +78,10 @@ async def refresh_quotes(
     if not positions:
         return RefreshQuotesResult(account_id, (), 0, 0, now)
 
-    symbols = tuple(Symbol(p.symbol.ticker) for p in positions if p.symbol.ticker)
+    # Reuse each position's existing Symbol (which already carries the correct
+    # asset_class) rather than reconstructing it as EQUITY — rebuilding would
+    # re-reject CUSIP fixed-income tickers and 500 the whole live refresh.
+    symbols = tuple(p.symbol for p in positions if p.symbol.ticker)
     quotes = await market_data.get_quotes(symbols)
     quote_map = {q.symbol.ticker: q for q in quotes}
 
