@@ -21,6 +21,7 @@ from pathlib import Path
 from trading.domain import (
     Account,
     AccountType,
+    AssetClass,
     BrokerAccount,
     Money,
     Position,
@@ -254,7 +255,11 @@ def _broker_from_holdings(path: Path) -> FakeBroker:
         try:
             sym = Symbol(h["symbol"])
         except ValueError:
-            continue  # skip invalid tickers (CUSIPs, preferred-share oddities)
+            # Non-equity instruments (CUSIP treasuries, etc.) fail the equity
+            # ticker regex. Keep them under a non-validating asset class instead
+            # of dropping them — silently skipping these is what made the joint
+            # account under-report by ~$157k of fixed income.
+            sym = Symbol(h["symbol"], asset_class=AssetClass.FIXED_INCOME)
         qty = Decimal(str(h["quantity"]))
         total_cost = Decimal(str(h["cost_basis"]))
         # Domain's average_cost is PER-SHARE; the statement gives total cost basis.

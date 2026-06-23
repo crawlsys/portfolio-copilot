@@ -26,6 +26,13 @@ BlobKey = NewType("BlobKey", str)
 class AssetClass(Enum):
     EQUITY = auto()
     OPTION = auto()
+    # Non-equity instruments held in a brokerage account: treasuries/bonds
+    # (CUSIP-identified), mutual funds, money-market, REITs, preferreds. These
+    # don't satisfy the equity ticker regex and aren't options; tickers/CUSIPs
+    # for them are accepted as-is (no format validation) so their market value
+    # is never silently dropped from net liquidation.
+    FIXED_INCOME = auto()
+    FUND = auto()
 
 
 class AccountType(Enum):
