@@ -26,6 +26,7 @@ from trading.domain.common.value_objects import (
     SignalKind,
     Symbol,
     TransactionType,
+    coerce_symbol,
 )
 from trading.domain.congressional.entities import (
     Committee,
@@ -76,6 +77,7 @@ __all__ = [
     "SignalId",
     "SignalKind",
     "Symbol",
+    "coerce_symbol",
     "TradeDisclosure",
     "TransactionType",
     "is_produced_in_v1",

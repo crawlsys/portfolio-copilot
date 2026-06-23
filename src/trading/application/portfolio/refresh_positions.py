@@ -35,6 +35,7 @@ from trading.domain import (
     Position,
     Severity,
     Symbol,
+    coerce_symbol,
 )
 
 if TYPE_CHECKING:
@@ -155,7 +156,7 @@ async def _load_local_positions(session: AsyncSession, account_id: str) -> tuple
         positions.append(
             Position(
                 account_id=row.account_id,
-                symbol=Symbol(row.symbol),
+                symbol=coerce_symbol(row.symbol),
                 quantity=row.quantity,
                 average_cost=_row_money(row.average_cost, row.average_cost_currency),
                 market_value=_row_money(row.market_value, "USD"),

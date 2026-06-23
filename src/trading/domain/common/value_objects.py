@@ -181,6 +181,19 @@ _EQUITY_RE = re.compile(r"^[A-Z]{1,6}([.\-][A-Z]{1,4})?$")
 _OPTION_RE = re.compile(r"^[A-Z]{1,6}\d{6}[CP]\d{8}$")
 
 
+def coerce_symbol(ticker: str) -> "Symbol":
+    """Rebuild a Symbol from a stored/loaded ticker without dropping non-equity
+    instruments. Equity tickers validate normally; anything that isn't a valid
+    equity ticker (CUSIP-identified treasuries, etc.) is accepted under
+    FIXED_INCOME so its market value is never silently lost. Use this anywhere a
+    Symbol is reconstructed from a persisted string rather than created fresh.
+    """
+    try:
+        return Symbol(ticker)
+    except ValueError:
+        return Symbol(ticker, asset_class=AssetClass.FIXED_INCOME)
+
+
 @dataclass(frozen=True, slots=True)
 class DateRange:
     """Inclusive [start, end] date range."""

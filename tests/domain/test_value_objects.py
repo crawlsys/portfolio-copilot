@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from trading.domain import AssetClass, DateRange, Money, Symbol
+from trading.domain import AssetClass, DateRange, Money, Symbol, coerce_symbol
 
 # --- Money -------------------------------------------------------------------
 
@@ -115,6 +115,29 @@ class TestSymbol:
         """An OCC-shaped string passed as equity should be rejected by the equity rule."""
         with pytest.raises(ValueError, match="Invalid equity"):
             Symbol("NVDA240315C00080000")  # default asset_class=EQUITY
+
+
+class TestCoerceSymbol:
+    """coerce_symbol must never drop a holding — the bug that made the joint
+    account under-report ~$157k of CUSIP-identified treasuries."""
+
+    def test_equity_ticker_stays_equity(self) -> None:
+        sym = coerce_symbol("GOOGL")
+        assert sym.ticker == "GOOGL"
+        assert sym.asset_class is AssetClass.EQUITY
+
+    def test_dotted_equity_ticker_ok(self) -> None:
+        assert coerce_symbol("BRK.B").asset_class is AssetClass.EQUITY
+
+    def test_cusip_treasury_accepted_as_fixed_income(self) -> None:
+        # A 9-char CUSIP fails the equity regex; it must be kept, not dropped.
+        sym = coerce_symbol("912797RF6")
+        assert sym.ticker == "912797RF6"
+        assert sym.asset_class is AssetClass.FIXED_INCOME
+
+    def test_empty_still_rejected(self) -> None:
+        with pytest.raises(ValueError, match="empty"):
+            coerce_symbol("")
 
 
 # --- DateRange ---------------------------------------------------------------

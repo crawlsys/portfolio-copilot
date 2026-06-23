@@ -21,12 +21,12 @@ from pathlib import Path
 from trading.domain import (
     Account,
     AccountType,
-    AssetClass,
     BrokerAccount,
     Money,
     Position,
     Quote,
     Symbol,
+    coerce_symbol,
 )
 
 
@@ -252,14 +252,10 @@ def _broker_from_holdings(path: Path) -> FakeBroker:
         cash=Money.usd(str(snapshot.get("cash", "0"))),
     )
     for h in snapshot.get("holdings", []):
-        try:
-            sym = Symbol(h["symbol"])
-        except ValueError:
-            # Non-equity instruments (CUSIP treasuries, etc.) fail the equity
-            # ticker regex. Keep them under a non-validating asset class instead
-            # of dropping them — silently skipping these is what made the joint
-            # account under-report by ~$157k of fixed income.
-            sym = Symbol(h["symbol"], asset_class=AssetClass.FIXED_INCOME)
+        # Keep non-equity instruments (CUSIP treasuries, etc.) instead of
+        # dropping them — silently skipping these is what made the joint
+        # account under-report by ~$157k of fixed income.
+        sym = coerce_symbol(h["symbol"])
         qty = Decimal(str(h["quantity"]))
         total_cost = Decimal(str(h["cost_basis"]))
         # Domain's average_cost is PER-SHARE; the statement gives total cost basis.
