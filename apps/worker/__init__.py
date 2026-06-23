@@ -94,6 +94,7 @@ def _register_jobs(scheduler: BaseScheduler) -> None:
     # jobs themselves handle construction. For now, schedule wrapper jobs.
     _register_canary_job(scheduler)
     _register_pipeline_health_job(scheduler)
+    _register_vix_job(scheduler)
 
 
 def _register_canary_job(scheduler: BaseScheduler) -> None:
@@ -123,6 +124,24 @@ def _register_pipeline_health_job(scheduler: BaseScheduler) -> None:
         run_pipeline_health_sync,
         IntervalTrigger(hours=1),
         id="pipeline_health",
+        replace_existing=True,
+    )
+
+
+def _register_vix_job(scheduler: BaseScheduler) -> None:
+    """Register VIX threshold alert (every 30 min during market hours)."""
+    from apps.worker.jobs.vix_alert import run_vix_check_sync  # noqa: PLC0415
+
+    scheduler.add_job(
+        run_vix_check_sync,
+        CronTrigger(
+            day_of_week="mon-fri",
+            hour="9-16",
+            minute="0,30",
+            timezone=MARKET_TIMEZONE,
+        ),
+        id="vix_alert",
+        name="vix_threshold_alert",
         replace_existing=True,
     )
 

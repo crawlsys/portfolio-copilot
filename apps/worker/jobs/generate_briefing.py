@@ -16,12 +16,12 @@ from sqlalchemy.pool import NullPool
 from apps.common.settings import get_settings
 from trading.application.common.clock import SystemClock
 from trading.application.common.unit_of_work import UnitOfWork
-from trading.domain import Severity
 from trading.application.market_data.refresh_quotes import MarketDataPort, NoMarketData
 from trading.application.signals.generate_briefing import (
     GenerateBriefingCommand,
     execute,
 )
+from trading.domain import Severity
 
 _log = logging.getLogger(__name__)
 

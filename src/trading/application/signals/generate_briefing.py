@@ -76,10 +76,12 @@ async def execute(
     session = uow.session
 
     target_date = cmd.for_date or now.date()
-    period_start = datetime.combine(target_date, datetime.min.time(), tzinfo=UTC)
+    # Look back 72 hours, not just today. STOCK Act disclosures arrive 1-7 days
+    # after the trade; filtering to "today only" misses most real data.
     period_end = datetime.combine(target_date + timedelta(days=1), datetime.min.time(), tzinfo=UTC)
+    period_start = period_end - timedelta(days=7)
 
-    # 1. Gather the day's data
+    # 1. Gather the rolling window's data
     disclosures = await _fetch_disclosures(session, period_start, period_end)
     held_tickers = await _fetch_held_tickers(session)
     overlaps = [d for d in disclosures if d.symbol and d.symbol in held_tickers]
@@ -94,18 +96,26 @@ async def execute(
         market_regime=market_regime,
     )
 
+    template_summary, template_excerpt = _generate_template_summary(context)
+
     if llm_api_key:
-        summary, excerpt = await _generate_llm_summary(
+        llm_summary, llm_excerpt = await _generate_llm_summary(
             context, llm_provider, llm_api_key, llm_model
         )
+        # If the LLM said "no disclosures" but we KNOW there are disclosures,
+        # it hallucinated — use the template instead.
+        if context.disclosures and "no" in llm_summary.lower()[:200] and "disclos" in llm_summary.lower()[:200]:
+            summary, excerpt = template_summary, template_excerpt
+        else:
+            summary, excerpt = llm_summary, llm_excerpt
     else:
-        summary, excerpt = _generate_template_summary(context)
+        summary, excerpt = template_summary, template_excerpt
 
     # 3. Persist
     briefing_id = f"briefing-{target_date.isoformat()}-{uuid4().hex[:8]}"
     briefing_row = BriefingRow(
         briefing_id=briefing_id,
-        briefing_date=period_start,
+        briefing_date=datetime.combine(target_date, datetime.min.time(), tzinfo=UTC),
         period_start=period_start,
         period_end=period_end,
         summary_markdown=summary,

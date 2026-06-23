@@ -81,9 +81,9 @@ class MassiveClient:
                 "/v2/snapshot/locale/us/markets/stocks/tickers",
                 params={"tickers": ",".join(symbol.ticker for symbol in symbols)},
             )
-            quotes = parse_snapshot_quotes(payload, symbols)
+            return parse_snapshot_quotes(payload, symbols)
             # Return whatever we got — missing tickers just don't get enriched.
-            return quotes
+            return parse_snapshot_quotes(payload, symbols)
         except MassiveAuthError:
             return await self._fan_out_prev_quotes(symbols)
 
