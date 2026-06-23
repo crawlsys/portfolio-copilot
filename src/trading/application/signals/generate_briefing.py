@@ -104,7 +104,11 @@ async def execute(
         )
         # If the LLM said "no disclosures" but we KNOW there are disclosures,
         # it hallucinated — use the template instead.
-        if context.disclosures and "no" in llm_summary.lower()[:200] and "disclos" in llm_summary.lower()[:200]:
+        if (
+            context.disclosures
+            and "no" in llm_summary.lower()[:200]
+            and "disclos" in llm_summary.lower()[:200]
+        ):
             summary, excerpt = template_summary, template_excerpt
         else:
             summary, excerpt = llm_summary, llm_excerpt
@@ -223,25 +227,34 @@ def _generate_template_summary(ctx: _BriefingContext) -> tuple[str, str]:
     ]
 
     if ctx.overlaps:
-        lines.append("## 🎯 Congressional Activity on YOUR Holdings")
+        lines.append("## 🎯 Your Holdings — Congressional Activity")
         lines.append("")
-        for d in ctx.overlaps[:10]:
-            action = "bought" if "PURCHASE" in d.transaction_type else "sold"
+        lines.append("| Trader | Ticker | Action | Amount | Traded | Filed |")
+        lines.append("|--------|--------|--------|--------|--------|-------|")
+        for d in ctx.overlaps[:15]:
+            action = "BUY" if "PURCHASE" in d.transaction_type else "SELL"
+            amt = (
+                f"${d.amount_range_low:,}-${d.amount_range_high:,}"
+                if d.amount_range_low
+                else "undisclosed"
+            )
             lines.append(
-                f"- **{d.member_name}** {action} **{d.symbol}** "
-                f"(${d.amount_range_low:,}-${d.amount_range_high:,})"
+                f"| {d.member_name} | **{d.symbol}** | {action} | {amt} | "
+                f"{d.transaction_date.date()} | {d.disclosure_date.date()} |"
             )
         lines.append("")
 
     if ctx.disclosures:
-        lines.append("## All New Disclosures")
+        lines.append("## All Disclosures (this cycle)")
         lines.append("")
-        for d in ctx.disclosures[:20]:
-            sym = d.symbol or d.asset_description
+        lines.append("| Trader | Ticker | Action | Amount | Filed |")
+        lines.append("|--------|--------|--------|--------|-------|")
+        for d in ctx.disclosures[:25]:
+            sym = d.symbol or d.asset_description[:12]
+            action = "BUY" if "PURCHASE" in d.transaction_type else "SELL"
+            amt = f"${d.amount_range_low:,}" if d.amount_range_low else "??"
             lines.append(
-                f"- {d.member_name} — {d.transaction_type} {sym} "
-                f"(${d.amount_range_low:,}-${d.amount_range_high:,}) "
-                f"(traded {d.transaction_date.date()}, filed {d.disclosure_date.date()})"
+                f"| {d.member_name} | {sym} | {action} | {amt} | {d.disclosure_date.date()} |"
             )
 
     # Push excerpt: short, actionable
@@ -296,15 +309,15 @@ async def _call_anthropic(ctx: _BriefingContext, api_key: str, model: str) -> tu
             },
             json={
                 "model": model,
-                "max_tokens": 2000,
+                "max_tokens": 4000,
                 "system": (
-                    "You are a financial research assistant. Summarize the day's "
-                    "Congressional trade disclosures and market conditions for a "
-                    "sophisticated retail investor. You MUST NOT propose trades, "
-                    "recommend buy/sell actions, or give investment advice. Your "
-                    "job is to surface and contextualize information only. "
-                    "Include a short push notification excerpt (1-2 sentences) "
-                    "at the end prefixed with 'PUSH: '."
+                    "You are a financial research assistant analyzing Congressional trade "
+                    "disclosures for a sophisticated investor. Write a detailed briefing "
+                    "(3-5 paragraphs) covering: (1) the most significant trades and what they "
+                    "signal, (2) patterns by trader, (3) sector concentration, (4) disclosure "
+                    "lag anomalies, and (5) overlaps with held tickers. Be specific with names, "
+                    "tickers, and amounts. Do NOT propose trades or give advice. End with PUSH: "
+                    "followed by a 2-3 sentence summary."
                 ),
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -337,16 +350,20 @@ async def _call_openai(ctx: _BriefingContext, api_key: str, model: str) -> tuple
             },
             json={
                 "model": model,
-                "max_tokens": 2000,
+                "max_tokens": 4000,
                 "messages": [
                     {
                         "role": "system",
                         "content": (
-                            "You are a financial research assistant. Summarize "
-                            "Congressional trade disclosures. You MUST NOT propose "
-                            "trades or give investment advice. Surface and "
-                            "contextualize only. End with 'PUSH: ' followed by a "
-                            "1-2 sentence push notification excerpt."
+                            "You are a financial research assistant analyzing Congressional trade "
+                            "disclosures for a sophisticated investor. Write a detailed briefing "
+                            "(3-5 paragraphs) covering: (1) the most significant trades and what they "
+                            "signal, (2) patterns by trader — are they repeating, diversifying, or "
+                            "liquidating? (3) sector concentration trends, (4) disclosure lag anomalies "
+                            "(trades filed unusually fast or slow), and (5) notable overlaps with the "
+                            "investor's held tickers. Be specific with names, tickers, and amounts. "
+                            "You MUST NOT propose trades or give investment advice. End with 'PUSH: '"
+                            "followed by a 2-3 sentence push notification summary."
                         ),
                     },
                     {"role": "user", "content": prompt},
@@ -384,16 +401,21 @@ async def _call_litellm(ctx: _BriefingContext, api_key: str, model: str) -> tupl
             },
             json={
                 "model": model,
-                "max_tokens": 2000,
+                "max_tokens": 4000,
                 "messages": [
                     {
                         "role": "system",
                         "content": (
-                            "You are a financial research assistant. Summarize "
-                            "Congressional trade disclosures. You MUST NOT propose "
-                            "trades or give investment advice. Surface and "
-                            "contextualize only. End with PUSH: followed by a "
-                            "1-2 sentence push notification excerpt."
+                            "You are a financial research assistant. Produce a CONCISE briefing using "
+                            "markdown tables and short bullets — NOT long paragraphs. Format:\n"
+                            "1. One-sentence summary of the filing cycle.\n"
+                            "2. A markdown table: | Trader | Ticker | Action | Amount | Traded | Filed | Lag |\n"
+                            "   Group by trader. Mark portfolio overlaps with ⚠️.\n"
+                            "3. Short bullet list (max 5) of notable patterns or anomalies.\n"
+                            "4. One sentence on sector trend.\n"
+                            "Keep it scannable. No paragraphs longer than 2 sentences. "
+                            "Do NOT propose trades or give advice. "
+                            "End with PUSH: followed by a 1-2 sentence summary."
                         ),
                     },
                     {"role": "user", "content": prompt},

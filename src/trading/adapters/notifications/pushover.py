@@ -61,6 +61,7 @@ class PushoverNotifier:
         severity: Severity = Severity.INFO,
         tags: list[str] | None = None,
         click_url: str | None = None,
+        html: bool = False,
     ) -> None:
         """Send a notification via Pushover. Failures are logged, not raised."""
         data: dict[str, str] = {
@@ -71,6 +72,8 @@ class PushoverNotifier:
             "priority": _SEVERITY_TO_PRIORITY.get(severity, "0"),
             "sound": self._sound,
         }
+        if html:
+            data["html"] = "1"
         if self._device:
             data["device"] = self._device
         if click_url:
