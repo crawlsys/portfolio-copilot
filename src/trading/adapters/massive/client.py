@@ -81,7 +81,6 @@ class MassiveClient:
                 "/v2/snapshot/locale/us/markets/stocks/tickers",
                 params={"tickers": ",".join(symbol.ticker for symbol in symbols)},
             )
-            return parse_snapshot_quotes(payload, symbols)
             # Return whatever we got — missing tickers just don't get enriched.
             return parse_snapshot_quotes(payload, symbols)
         except MassiveAuthError:
@@ -166,8 +165,17 @@ class MassiveClient:
         return parse_ticker_results(payload)
 
     async def get_vix(self) -> Decimal:
-        """Get the current VIX value from the CBOE Volatility Index."""
-        payload = await self._get("/v2/aggs/ticker/I:VIX/prev")
+        """Get the current VIX value from the CBOE Volatility Index.
+
+        Returns Decimal("0") when the tier isn't entitled to index data
+        (e.g. Stocks Starter) — callers treat 0 as "regime unknown".
+        """
+        try:
+            payload = await self._get("/v2/aggs/ticker/I:VIX/prev")
+        except MassiveAuthError:
+            # Indices entitlement is a higher tier. Fail soft so the VIX
+            # alert job and briefing regime don't spam the logs.
+            return Decimal("0")
         results: list[object] = payload.get("results", [])  # type: ignore[assignment]
         if not results:
             return Decimal("0")

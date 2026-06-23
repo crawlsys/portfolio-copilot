@@ -97,3 +97,21 @@ async def test_rate_limit_error_includes_retry_after(trading_vcr: vcr_module.VCR
 
     assert exc_info.value.retry_after == "30"
     assert exc_info.value.rate_limit_remaining == "0"
+
+
+async def test_get_vix_soft_fails_on_auth_error() -> None:
+    """VIX is an index; Starter tier isn't entitled → 403.
+
+    get_vix should return Decimal("0") rather than raising, so the VIX
+    alert job and briefing regime don't spam the logs every cycle.
+    """
+    client = MassiveClient(api_key="dummy")
+
+    async def _raise_auth(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise MassiveAuthError("Massive HTTP 403: not entitled to this data")
+
+    client._get = _raise_auth  # type: ignore[method-assign]
+    vix = await client.get_vix()
+    await client.aclose()
+
+    assert vix == Decimal("0")

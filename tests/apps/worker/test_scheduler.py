@@ -38,6 +38,7 @@ class TestCreateWorker:
             "daily_briefing",
             "token_canary_market_hours",
             "pipeline_health",
+            "vix_alert",
         }
         assert expected_jobs == job_ids
 
