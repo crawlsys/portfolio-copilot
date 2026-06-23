@@ -22,7 +22,10 @@ export default async function DisclosureDetailPage({
   params,
 }: DisclosureDetailPageProps) {
   const { filingId } = await params;
-  const disclosure = await loadDisclosure(filingId);
+  // Next.js delivers the dynamic segment still percent-encoded, and the API
+  // client re-encodes path params — decode once here so a filing_id containing
+  // a colon (e.g. "quiver-filing:<digest>") isn't double-encoded into a 404.
+  const disclosure = await loadDisclosure(decodeURIComponent(filingId));
 
   if (!disclosure) {
     notFound();
