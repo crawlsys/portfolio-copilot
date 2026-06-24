@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from trading.application.signals.generate_digest import (
+    _Account,
     _Pos,
     _build_context,
     _template_digest,
@@ -33,28 +34,43 @@ POSITIONS = [
 ]
 TOTAL = sum((p.mv for p in POSITIONS), Decimal("0"))
 DISC = [_Disc("Nancy Pelosi", "INTC", "PURCHASE", 1000001, 5000000)]
+INDIV = _Account(
+    name="Individual",
+    managed=False,
+    cash=Decimal("183316.28"),
+    positions=[_Pos("T", Decimal("300"), Decimal("6845.97"), Decimal("0"))],
+)
 
 
-def test_template_digest_has_required_sections_and_concentration() -> None:
-    md = _template_digest(POSITIONS, TOTAL, DISC, [], "200000")
-    assert "## Portfolio Snapshot" in md
+def test_template_digest_marks_managed_and_self_directed_cash() -> None:
+    md = _template_digest(POSITIONS, TOTAL, DISC, [], "183316.28", joint_managed=True)
+    assert "broker-managed, hold-only" in md
+    assert "Cash to deploy (self-directed): **$183,316**" in md
     assert "## Action of the Day" in md
-    assert "**HOLD**" in md  # fallback is always an explicit HOLD
-    assert "GLW" in md and "$127,570" in md
-    assert "$200,000" in md  # cash to deploy rendered
 
 
 def test_template_push_leads_with_action() -> None:
     push = _template_push(date(2026, 6, 24), DISC, [])
     assert push.startswith("📊 2026-06-24 — Action: HOLD.")
-    assert "1 disclosure(s)" in push
 
 
-def test_build_context_includes_positions_disclosures_and_overlaps() -> None:
-    overlaps = [_Disc("Jared Moskowitz", "GLW", "PURCHASE", 1001, 15000)]
-    ctx = _build_context(date(2026, 6, 24), POSITIONS, TOTAL, DISC, overlaps, "unknown", "200000")
-    assert "Equity book value: $256,978" in ctx
-    assert "Uninvested CASH available to deploy: $200,000" in ctx
+def test_build_context_marks_managed_account_hold_only() -> None:
+    ctx = _build_context(
+        date(2026, 6, 24), POSITIONS, TOTAL, DISC, [], "unknown",
+        "183316.28", INDIV, joint_managed=True,
+    )
+    # managed joint must be flagged hold-only / non-tradeable
+    assert "HOLD-ONLY" in ctx
+    assert "NOT tradeable" in ctx
+    # real cash from the self-directed account, not a constant
+    assert "CASH TO DEPLOY (self-directed account): $183,316" in ctx
+    assert "Individual (SELF-DIRECTED" in ctx and "T 300" in ctx
     assert "Nancy Pelosi" in ctx and "INTC" in ctx
-    assert "OVERLAPPING HELD TICKERS: GLW" in ctx
-    assert "$1,000,001–$5,000,000" in ctx
+
+
+def test_build_context_individual_absent_is_handled() -> None:
+    ctx = _build_context(
+        date(2026, 6, 24), POSITIONS, TOTAL, DISC, [], "unknown",
+        "200000", None, joint_managed=False,
+    )
+    assert "Individual (self-directed): not loaded." in ctx

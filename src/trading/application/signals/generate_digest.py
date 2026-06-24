@@ -12,9 +12,11 @@ key is configured, so the daily push is never lost.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
@@ -54,10 +56,23 @@ _SYSTEM_PROMPT = (
     "concentration. It is acceptable to recommend holding some/all in cash if "
     "that's the honest call.\n"
     "5. ## Risk & Watch Items — what could go wrong, what to monitor.\n"
-    "6. ## Action of the Day — ONE clear call: BUY <ticker>, SELL <ticker>, "
-    "or HOLD, with a one-line rationale. HOLD is valid; never invent a trade.\n"
+    "6. ## Action of the Day — ONE clear call, actionable in the SELF-DIRECTED "
+    "account only: BUY <ticker> / deploy cash, or HOLD. HOLD is valid; never "
+    "invent a trade.\n"
     "End with a line 'PUSH: ' then a 2-3 sentence phone-notification summary "
     "that leads with the action and teases the digest.\n"
+    "\n"
+    "HARD CONSTRAINTS — obey strictly:\n"
+    "- The JOINT account is BROKER/ADVISOR-MANAGED. The owner CANNOT liquidate "
+    "it. NEVER recommend selling or trimming any joint/managed position — treat "
+    "them as fixed (hold-only). You may discuss their concentration as risk to "
+    "be aware of, but the remedy is NOT a sale.\n"
+    "- TAX: the owner already realized a large capital gain THIS YEAR (a ~$200k "
+    "position was sold). Do NOT recommend realizing further gains in any taxable "
+    "account; additional appreciated-stock sales stack capital-gains tax.\n"
+    "- All deployment and any BUY actions apply ONLY to the self-directed "
+    "individual account and its available cash. The Action of the Day must be "
+    "something the owner can actually execute there.\n"
     "Do not hedge with generic disclaimers; be direct and useful."
 )
 
@@ -68,6 +83,44 @@ class _Pos:
     qty: Decimal
     mv: Decimal
     pnl: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class _Account:
+    name: str
+    managed: bool
+    cash: Decimal
+    positions: list[_Pos]
+
+
+_DATA_DIR = Path(__file__).resolve().parents[4] / "data"
+
+
+def _load_account_file(filename: str) -> _Account | None:
+    """Load an account holdings file (joint or individual) for digest context —
+    its cash, managed flag, and positions. Returns None if absent/unreadable."""
+    path = _DATA_DIR / filename
+    if not path.exists():
+        return None
+    try:
+        d = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    positions = [
+        _Pos(
+            sym=h["symbol"],
+            qty=Decimal(str(h.get("quantity", "0"))),
+            mv=Decimal(str(h.get("market_value", "0"))),
+            pnl=Decimal(str(h.get("unrealized_pnl", "0"))),
+        )
+        for h in d.get("holdings", [])
+    ]
+    return _Account(
+        name=str(d.get("nickname", filename)),
+        managed=bool(d.get("managed", False)),
+        cash=Decimal(str(d.get("cash", "0"))),
+        positions=positions,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,13 +167,24 @@ async def execute(
     positions = await _fetch_positions(session)
     regime = await _assess_market_regime(market_data)
 
+    # Account context: the joint book (DB positions) is broker-managed; the
+    # self-directed individual account holds the deployable cash.
+    joint = _load_account_file("holdings.json")
+    individual = _load_account_file("holdings-individual.json")
+    joint_managed = bool(joint and joint.managed)
+    if individual is not None:
+        cash_to_deploy = str(individual.cash)  # real cash, not a constant
+
     total_sec = sum((p.mv for p in positions), Decimal("0"))
     context = _build_context(
-        target_date, positions, total_sec, disclosures, overlaps, regime, cash_to_deploy
+        target_date, positions, total_sec, disclosures, overlaps, regime,
+        cash_to_deploy, individual, joint_managed,
     )
 
     generated_by = "template"
-    summary = _template_digest(positions, total_sec, disclosures, overlaps, cash_to_deploy)
+    summary = _template_digest(
+        positions, total_sec, disclosures, overlaps, cash_to_deploy, joint_managed
+    )
     push = _template_push(target_date, disclosures, overlaps)
 
     if openrouter_api_key:
@@ -215,6 +279,8 @@ def _build_context(
     overlaps: list[TradeDisclosureRow],
     regime: str,
     cash_to_deploy: str,
+    individual: _Account | None,
+    joint_managed: bool,
 ) -> str:
     def pct(mv: Decimal) -> str:
         return f"{(mv / total_sec * 100):.1f}%" if total_sec else "0%"
@@ -231,12 +297,30 @@ def _build_context(
             f"{d.transaction_date.date()} | {d.disclosure_date.date()} |"
         )
     overlap_syms = sorted({d.symbol for d in overlaps if d.symbol})
+
+    joint_label = (
+        "BROKER/ADVISOR-MANAGED — owner cannot liquidate; HOLD-ONLY, never recommend "
+        "selling these; tax-sensitive (large gain already realized this year)"
+        if joint_managed
+        else "self-directed"
+    )
+    indiv_line = "Individual (self-directed): not loaded."
+    if individual is not None:
+        held = ", ".join(f"{p.sym} {p.qty:g}" for p in individual.positions) or "none"
+        indiv_line = (
+            f"Individual (SELF-DIRECTED — deploy/trade here): "
+            f"${individual.cash:,.0f} cash; positions: {held}."
+        )
+
     return (
-        f"PORTFOLIO (live):\n"
-        f"- Equity book value: ${total_sec:,.0f} across {len(positions)} positions\n"
-        f"- Uninvested CASH available to deploy: ${Decimal(cash_to_deploy):,.0f}\n"
+        f"ACCOUNTS:\n"
+        f"- Joint (the book below): {joint_label}.\n"
+        f"- {indiv_line}\n\n"
+        f"JOINT PORTFOLIO (managed book — context only, NOT tradeable):\n"
+        f"- Book value: ${total_sec:,.0f} across {len(positions)} positions\n"
         f"- Top positions (| Ticker | Mkt Value | % of book | Unrealized P/L |):\n"
         f"| Ticker | Mkt Value | % book | Unrl P/L |\n|---|---|---|---|\n{top_lines}\n\n"
+        f"CASH TO DEPLOY (self-directed account): ${Decimal(cash_to_deploy):,.0f}\n\n"
         f"RECENT CONGRESSIONAL DISCLOSURES (newest first):\n"
         f"| Member | Ticker | Action | Amount | Traded | Disclosed |\n|---|---|---|---|---|---|\n"
         + "\n".join(disc_lines)
@@ -282,14 +366,18 @@ def _template_digest(
     disclosures: list[TradeDisclosureRow],
     overlaps: list[TradeDisclosureRow],
     cash_to_deploy: str,
+    joint_managed: bool,
 ) -> str:
+    managed_note = (
+        " (broker-managed, hold-only)" if joint_managed else ""
+    )
     lines = [
         "# Daily Digest",
         "",
         "## Portfolio Snapshot",
         "",
-        f"- Equity book value: **${total_sec:,.0f}** across {len(positions)} positions",
-        f"- Uninvested cash to deploy: **${Decimal(cash_to_deploy):,.0f}**",
+        f"- Joint book value{managed_note}: **${total_sec:,.0f}** across {len(positions)} positions",
+        f"- Cash to deploy (self-directed): **${Decimal(cash_to_deploy):,.0f}**",
         "",
         "| Ticker | Market Value | % of book | Unrealized P/L |",
         "|--------|-------------|-----------|----------------|",

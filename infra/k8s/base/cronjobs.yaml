@@ -49,6 +49,10 @@ spec:
                   mountPath: /app/data/holdings.json
                   subPath: holdings.json
                   readOnly: true
+                - name: holdings
+                  mountPath: /app/data/holdings-individual.json
+                  subPath: holdings-individual.json
+                  readOnly: true
               envFrom:
                 - secretRef:
                     name: tracker-secrets
