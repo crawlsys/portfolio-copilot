@@ -89,3 +89,9 @@ Thumbs.db
 # Scratch
 scratch/
 tmp/
+
+# Real account data — never commit (use data/holdings.example.json as a template)
+data/holdings.json
+data/holdings-individual.json
+data/statement*.json
+data/statement*.pdf

@@ -1,0 +1,31 @@
+{
+  "account_id": "0000-0000",
+  "masked_schwab_id": "****-0000",
+  "nickname": "Example Brokerage",
+  "managed": false,
+  "ending_value": "50000.00",
+  "cash": "10000.00",
+  "holdings": [
+    {
+      "symbol": "AAPL",
+      "description": "APPLE INC",
+      "quantity": "100",
+      "price": "190.00",
+      "market_value": "19000.00",
+      "cost_basis": "12000.00",
+      "unrealized_pnl": "7000.00",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "VOO",
+      "description": "VANGUARD S&P 500 ETF",
+      "quantity": "40",
+      "price": "525.00",
+      "market_value": "21000.00",
+      "cost_basis": "18000.00",
+      "unrealized_pnl": "3000.00",
+      "asset_class": "ETF"
+    }
+  ],
+  "source": "example — copy to data/holdings.json and replace with your own"
+}
