@@ -40,7 +40,7 @@ export default async function DigestPage({ searchParams }: DigestPageProps) {
               <p className="mt-2 text-sm text-muted-foreground">
                 {fmtUsd(digest.netLiquidation) ? `Book ${fmtUsd(digest.netLiquidation)} · ` : ""}
                 {fmtUsd(digest.cashToDeploy) ? `${fmtUsd(digest.cashToDeploy)} cash to deploy · ` : ""}
-                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-accent-foreground">
+                <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-foreground">
                   {digest.model}
                 </span>
               </p>
