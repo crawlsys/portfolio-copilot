@@ -35,6 +35,7 @@ dependencies = [
     # utils
     "python-dateutil>=2.9",
     "click>=8.1",
+    "markdown>=3.7",
 ]
 
 [project.scripts]

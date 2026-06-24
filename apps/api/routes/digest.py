@@ -15,6 +15,14 @@ from trading.adapters.persistence.models import DigestRow
 router = APIRouter()
 
 
+def _md_to_html(md: str) -> str:
+    """Render the digest markdown to HTML server-side (GFM tables + lists), so
+    the frontend can drop it into a styled container without a markdown lib."""
+    import markdown  # noqa: PLC0415
+
+    return markdown.markdown(md, extensions=["tables", "sane_lists", "fenced_code"])
+
+
 def _session(request: Request) -> Session:
     comp = request.app.state.composition
     if comp.engine is None:
@@ -30,6 +38,7 @@ def _to_dict(row: DigestRow) -> dict[str, Any]:
         "digestId": row.digest_id,
         "digestDate": row.digest_date.date().isoformat(),
         "summaryMarkdown": row.summary_markdown,
+        "summaryHtml": _md_to_html(row.summary_markdown),
         "pushExcerpt": row.push_excerpt,
         "model": row.model,
         "netLiquidation": row.net_liquidation,

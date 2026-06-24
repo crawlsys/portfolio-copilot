@@ -38,3 +38,31 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Rendered digest markdown (server-side HTML) — scoped typography. */
+.digest-prose {
+  color: hsl(var(--foreground));
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.digest-prose h1 { font-size: 1.6rem; font-weight: 700; margin: 0.2rem 0 0.8rem; }
+.digest-prose h2 {
+  font-size: 1.2rem; font-weight: 600; color: #fff;
+  margin: 1.8rem 0 0.6rem; padding-top: 0.6rem;
+  border-top: 1px solid hsl(var(--border));
+}
+.digest-prose h3 { font-size: 1rem; font-weight: 600; color: hsl(var(--muted-foreground)); margin: 1.1rem 0 0.4rem; }
+.digest-prose p { margin: 0.6rem 0; }
+.digest-prose ul, .digest-prose ol { padding-left: 1.3rem; margin: 0.5rem 0; }
+.digest-prose li { margin: 0.3rem 0; }
+.digest-prose strong { color: #fff; }
+.digest-prose a { color: hsl(var(--primary)); }
+.digest-prose code {
+  background: hsl(var(--secondary)); padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem; font-size: 0.85em; color: #ffd479;
+}
+.digest-prose table { width: 100%; border-collapse: collapse; margin: 0.9rem 0; font-size: 0.85rem; }
+.digest-prose th, .digest-prose td { text-align: left; padding: 0.45rem 0.65rem; border-bottom: 1px solid hsl(var(--border)); }
+.digest-prose th { color: hsl(var(--muted-foreground)); font-weight: 600; }
+.digest-prose tr:hover td { background: hsl(var(--card)); }
+.digest-prose blockquote { border-left: 3px solid hsl(var(--border)); padding-left: 0.9rem; color: hsl(var(--muted-foreground)); margin: 0.8rem 0; }

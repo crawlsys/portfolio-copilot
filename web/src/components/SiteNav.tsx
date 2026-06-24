@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BriefcaseBusiness, Landmark } from "lucide-react";
+import { BriefcaseBusiness, Landmark, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function SiteNav() {
@@ -15,6 +15,12 @@ export function SiteNav() {
         <Link href="/congressional">
           <Landmark className="h-4 w-4" />
           Congressional
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/digest">
+          <Newspaper className="h-4 w-4" />
+          Digest
         </Link>
       </Button>
     </nav>

@@ -209,3 +209,39 @@ function pruneEmpty(filters: DisclosureFilters) {
     Object.entries(filters).filter(([, value]) => value !== undefined && value !== ""),
   );
 }
+
+// --- Daily digest (endpoints not yet in the generated OpenAPI schema; plain
+// fetch against the same resolved base URL) -----------------------------------
+
+export type DigestData = {
+  digestId: string;
+  digestDate: string;
+  summaryMarkdown: string;
+  summaryHtml: string;
+  pushExcerpt: string;
+  model: string;
+  netLiquidation: string | null;
+  cashToDeploy: string | null;
+  disclosuresCount: number;
+  generatedAt: string;
+};
+
+export async function getLatestDigest(): Promise<DigestData | null> {
+  const res = await noStoreFetch(`${apiBaseUrl}/digest/latest`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`digest/latest failed (${res.status})`);
+  return (await res.json()) as DigestData;
+}
+
+export async function getDigestForDate(date: string): Promise<DigestData | null> {
+  const res = await noStoreFetch(`${apiBaseUrl}/digest/${date}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`digest/${date} failed (${res.status})`);
+  return (await res.json()) as DigestData;
+}
+
+export async function getDigestDates(): Promise<string[]> {
+  const res = await noStoreFetch(`${apiBaseUrl}/digest/dates`);
+  if (!res.ok) return [];
+  return (await res.json()) as string[];
+}
