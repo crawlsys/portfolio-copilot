@@ -91,11 +91,19 @@ async def refresh_quotes(
 
     for pos in positions:
         q = quote_map.get(pos.symbol.ticker)
+        # Quantize to Money's 4-dp precision up front: feeds (snapshot or
+        # previous-close) can return sub-penny prices (e.g. worthless OTC at
+        # 0.000001) that would otherwise blow up Money construction.
+        last = (
+            q.last.quantize(Decimal("0.0001"))
+            if (q is not None and q.last is not None)
+            else None
+        )
         # A zero/None last price is not a usable quote — Massive's snapshot
         # endpoint returns last=0 for every ticker when the market is closed
         # (pre-/post-market). Treat it as missing so the position keeps its
         # last-known (snapshot) market value instead of collapsing to $0.
-        if q is None or q.last is None or q.last <= 0:
+        if last is None or last <= 0:
             missing += 1
             enriched.append(
                 QuoteEnrichment(
@@ -112,9 +120,9 @@ async def refresh_quotes(
             continue
 
         fetched += 1
-        live_price = Money(amount=q.last, currency=pos.market_value.currency)
+        live_price = Money(amount=last, currency=pos.market_value.currency)
         live_mv = Money(
-            amount=(q.last * pos.quantity).quantize(Decimal("0.0001")),
+            amount=(last * pos.quantity).quantize(Decimal("0.0001")),
             currency=pos.market_value.currency,
         )
         cost_total = pos.average_cost.amount * pos.quantity
@@ -123,7 +131,7 @@ async def refresh_quotes(
             currency=pos.market_value.currency,
         )
         pct = (
-            ((q.last - pos.average_cost.amount) / pos.average_cost.amount * 100)
+            ((last - pos.average_cost.amount) / pos.average_cost.amount * 100)
             if pos.average_cost.amount
             else Decimal("0")
         ).quantize(Decimal("0.01"))
