@@ -1,0 +1,316 @@
+# Scheduled jobs, previously fired by the worker's in-process APScheduler, now
+# run as discrete k8s CronJobs: one pod per run, native history/retries, and a
+# missed run is visible instead of silently lost if the worker is down. The
+# worker Deployment keeps only the continuous outbox-relay loop
+# (WORKER_SCHEDULE=false). Schedules are in America/New_York (US market time),
+# mirroring the original CronTriggers. Each job invokes the dispatcher
+# `python -m apps.worker.run_job <job_id>`.
+#
+# NOTE: image is :latest/Always here to match the Deployments; on deploy the
+# tag is pinned via `kubectl set image cronjob/... ` alongside the api/worker.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracker-daily-briefing
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: "0 7 * * *" # 7:00 AM ET daily
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tracker
+            app.kubernetes.io/component: cronjob
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: holdings
+              configMap:
+                name: tracker-holdings
+          containers:
+            - name: job
+              image: harbor.example.com/tracker/tracker-backend:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "apps.worker.run_job", "daily_briefing"]
+              volumeMounts:
+                - name: holdings
+                  mountPath: /app/data/holdings.json
+                  subPath: holdings.json
+                  readOnly: true
+              envFrom:
+                - secretRef:
+                    name: tracker-secrets
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracker-congressional-ingest-market
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: "0 9-16 * * 1-5" # hourly during market hours, Mon-Fri ET
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tracker
+            app.kubernetes.io/component: cronjob
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: holdings
+              configMap:
+                name: tracker-holdings
+          containers:
+            - name: job
+              image: harbor.example.com/tracker/tracker-backend:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "apps.worker.run_job", "congressional_ingest"]
+              volumeMounts:
+                - name: holdings
+                  mountPath: /app/data/holdings.json
+                  subPath: holdings.json
+                  readOnly: true
+              envFrom:
+                - secretRef:
+                    name: tracker-secrets
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracker-congressional-ingest-offhours
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: "0 0,4,8,20 * * *" # every 4h outside market hours, ET
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tracker
+            app.kubernetes.io/component: cronjob
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: holdings
+              configMap:
+                name: tracker-holdings
+          containers:
+            - name: job
+              image: harbor.example.com/tracker/tracker-backend:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "apps.worker.run_job", "congressional_ingest"]
+              volumeMounts:
+                - name: holdings
+                  mountPath: /app/data/holdings.json
+                  subPath: holdings.json
+                  readOnly: true
+              envFrom:
+                - secretRef:
+                    name: tracker-secrets
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracker-token-canary
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: "0,30 9-16 * * 1-5" # every 30 min during market hours, Mon-Fri ET
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tracker
+            app.kubernetes.io/component: cronjob
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: holdings
+              configMap:
+                name: tracker-holdings
+          containers:
+            - name: job
+              image: harbor.example.com/tracker/tracker-backend:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "apps.worker.run_job", "token_canary"]
+              volumeMounts:
+                - name: holdings
+                  mountPath: /app/data/holdings.json
+                  subPath: holdings.json
+                  readOnly: true
+              envFrom:
+                - secretRef:
+                    name: tracker-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracker-pipeline-health
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: "0 * * * *" # hourly
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tracker
+            app.kubernetes.io/component: cronjob
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: holdings
+              configMap:
+                name: tracker-holdings
+          containers:
+            - name: job
+              image: harbor.example.com/tracker/tracker-backend:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "apps.worker.run_job", "pipeline_health"]
+              volumeMounts:
+                - name: holdings
+                  mountPath: /app/data/holdings.json
+                  subPath: holdings.json
+                  readOnly: true
+              envFrom:
+                - secretRef:
+                    name: tracker-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracker-vix-alert
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: "0,30 9-16 * * 1-5" # every 30 min during market hours, Mon-Fri ET
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tracker
+            app.kubernetes.io/component: cronjob
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: holdings
+              configMap:
+                name: tracker-holdings
+          containers:
+            - name: job
+              image: harbor.example.com/tracker/tracker-backend:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "apps.worker.run_job", "vix_alert"]
+              volumeMounts:
+                - name: holdings
+                  mountPath: /app/data/holdings.json
+                  subPath: holdings.json
+                  readOnly: true
+              envFrom:
+                - secretRef:
+                    name: tracker-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi

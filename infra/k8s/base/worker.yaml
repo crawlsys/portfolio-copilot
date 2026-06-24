@@ -35,6 +35,12 @@ spec:
             - python
             - -m
             - apps.worker
+          env:
+            # Scheduled jobs run as discrete k8s CronJobs (see cronjobs.yaml).
+            # The worker process keeps only the continuous outbox-relay loop;
+            # the in-process APScheduler stays off so jobs don't double-fire.
+            - name: WORKER_SCHEDULE
+              value: "false"
           envFrom:
             - secretRef:
                 name: tracker-secrets
