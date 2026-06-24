@@ -82,6 +82,36 @@ def test_portfolio_live_query_with_market_data_returns_enriched_snapshot() -> No
     assert position["quoteTime"] == quote_time.isoformat()
 
 
+def test_portfolio_live_zero_price_quote_falls_back_to_snapshot() -> None:
+    """Market closed: Massive returns last=0 for every ticker. The live total
+    must keep the snapshot market value, not collapse the position to $0."""
+    market_data = FakeMarketData(
+        {
+            "AAPL": Quote(
+                symbol=Symbol("AAPL"),
+                bid=Decimal("0"),
+                ask=Decimal("0"),
+                last=Decimal("0"),
+                timestamp=datetime(2026, 6, 22, 5, 0, tzinfo=UTC),
+            )
+        }
+    )
+
+    with _client(market_data=market_data) as client:
+        response = client.get(f"/portfolio/{ACCOUNT_ID}?live=true")
+
+    assert response.status_code == 200
+    body = response.json()
+    # Core guard: a zero-price quote must NOT zero the position's live value.
+    position = body["positions"][0]
+    assert position["livePrice"] is None
+    assert position["liveMarketValue"] is None
+    # With no usable quotes, no live total is published — the snapshot
+    # netLiquidation (cash 1000 + mv 1100 = 2100) stands, not a collapsed total.
+    assert "liveNetLiquidation" not in body
+    assert body["netLiquidation"] == "2100.00"
+
+
 class FakeMarketData:
     def __init__(self, quotes: dict[str, Quote]) -> None:
         self._quotes = quotes

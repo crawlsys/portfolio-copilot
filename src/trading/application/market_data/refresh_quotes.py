@@ -91,7 +91,11 @@ async def refresh_quotes(
 
     for pos in positions:
         q = quote_map.get(pos.symbol.ticker)
-        if q is None:
+        # A zero/None last price is not a usable quote — Massive's snapshot
+        # endpoint returns last=0 for every ticker when the market is closed
+        # (pre-/post-market). Treat it as missing so the position keeps its
+        # last-known (snapshot) market value instead of collapsing to $0.
+        if q is None or q.last is None or q.last <= 0:
             missing += 1
             enriched.append(
                 QuoteEnrichment(
