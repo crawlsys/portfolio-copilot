@@ -112,6 +112,32 @@ def test_portfolio_live_zero_price_quote_falls_back_to_snapshot() -> None:
     assert body["netLiquidation"] == "2100.00"
 
 
+def test_portfolio_live_sub_penny_quote_does_not_crash() -> None:
+    """A previous-close quote can be a sub-penny micro-price (e.g. 0.000001)
+    that exceeds Money's 4-dp precision. It must be dropped (fall back to
+    snapshot), not 500 the endpoint."""
+    market_data = FakeMarketData(
+        {
+            "AAPL": Quote(
+                symbol=Symbol("AAPL"),
+                bid=Decimal("0.000001"),
+                ask=Decimal("0.000001"),
+                last=Decimal("0.000001"),
+                timestamp=datetime(2026, 6, 22, 5, 0, tzinfo=UTC),
+            )
+        }
+    )
+
+    with _client(market_data=market_data) as client:
+        response = client.get(f"/portfolio/{ACCOUNT_ID}?live=true")
+
+    assert response.status_code == 200
+    body = response.json()
+    position = body["positions"][0]
+    assert position["liveMarketValue"] is None
+    assert body["netLiquidation"] == "2100.00"
+
+
 class FakeMarketData:
     def __init__(self, quotes: dict[str, Quote]) -> None:
         self._quotes = quotes
