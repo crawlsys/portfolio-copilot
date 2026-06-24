@@ -27,25 +27,26 @@ class _Disc:
         self.disclosure_date = datetime(2026, 6, 23, tzinfo=UTC)
 
 
+# Synthetic fixtures — not real holdings.
 POSITIONS = [
-    _Pos("GLW", Decimal("665"), Decimal("127570"), Decimal("93268")),
-    _Pos("TSLA", Decimal("300"), Decimal("114855"), Decimal("23000")),
-    _Pos("MA", Decimal("30"), Decimal("14553"), Decimal("-387")),
+    _Pos("AAPL", Decimal("100"), Decimal("19000"), Decimal("7000")),
+    _Pos("VOO", Decimal("40"), Decimal("21000"), Decimal("3000")),
+    _Pos("KO", Decimal("50"), Decimal("3000"), Decimal("-200")),
 ]
 TOTAL = sum((p.mv for p in POSITIONS), Decimal("0"))
-DISC = [_Disc("Nancy Pelosi", "INTC", "PURCHASE", 1000001, 5000000)]
+DISC = [_Disc("Example Member", "INTC", "PURCHASE", 1000001, 5000000)]
 INDIV = _Account(
     name="Individual",
     managed=False,
-    cash=Decimal("183316.28"),
-    positions=[_Pos("T", Decimal("300"), Decimal("6845.97"), Decimal("0"))],
+    cash=Decimal("25000.00"),
+    positions=[_Pos("MSFT", Decimal("10"), Decimal("4500"), Decimal("0"))],
 )
 
 
 def test_template_digest_marks_managed_and_self_directed_cash() -> None:
-    md = _template_digest(POSITIONS, TOTAL, DISC, [], "183316.28", joint_managed=True)
+    md = _template_digest(POSITIONS, TOTAL, DISC, [], "25000", joint_managed=True)
     assert "broker-managed, hold-only" in md
-    assert "Cash to deploy (self-directed): **$183,316**" in md
+    assert "Cash to deploy (self-directed): **$25,000**" in md
     assert "## Action of the Day" in md
 
 
@@ -57,20 +58,20 @@ def test_template_push_leads_with_action() -> None:
 def test_build_context_marks_managed_account_hold_only() -> None:
     ctx = _build_context(
         date(2026, 6, 24), POSITIONS, TOTAL, DISC, [], "unknown",
-        "183316.28", INDIV, joint_managed=True,
+        "25000", INDIV, joint_managed=True,
     )
     # managed joint must be flagged hold-only / non-tradeable
     assert "HOLD-ONLY" in ctx
     assert "NOT tradeable" in ctx
     # real cash from the self-directed account, not a constant
-    assert "CASH TO DEPLOY (self-directed account): $183,316" in ctx
-    assert "Individual (SELF-DIRECTED" in ctx and "T 300" in ctx
-    assert "Nancy Pelosi" in ctx and "INTC" in ctx
+    assert "CASH TO DEPLOY (self-directed account): $25,000" in ctx
+    assert "Individual (SELF-DIRECTED" in ctx and "MSFT 10" in ctx
+    assert "Example Member" in ctx and "INTC" in ctx
 
 
 def test_build_context_individual_absent_is_handled() -> None:
     ctx = _build_context(
         date(2026, 6, 24), POSITIONS, TOTAL, DISC, [], "unknown",
-        "200000", None, joint_managed=False,
+        "50000", None, joint_managed=False,
     )
     assert "Individual (self-directed): not loaded." in ctx
