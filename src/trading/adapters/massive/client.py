@@ -81,10 +81,21 @@ class MassiveClient:
                 "/v2/snapshot/locale/us/markets/stocks/tickers",
                 params={"tickers": ",".join(symbol.ticker for symbol in symbols)},
             )
-            # Return whatever we got — missing tickers just don't get enriched.
-            return parse_snapshot_quotes(payload, symbols)
+            snapshot = parse_snapshot_quotes(payload, symbols)
         except MassiveAuthError:
             return await self._fan_out_prev_quotes(symbols)
+
+        # The snapshot endpoint returns last=0 for every ticker when the market
+        # is closed (pre-/post-market). Fill those gaps with previous-close so
+        # the live portfolio still reflects real market prices outside trading
+        # hours instead of collapsing to $0. Tickers /prev can't price (CUSIPs,
+        # funds) simply stay absent and fall back to their snapshot value.
+        by_ticker = {q.symbol.ticker: q for q in snapshot if q.last and q.last > 0}
+        gaps = tuple(s for s in symbols if s.ticker not in by_ticker)
+        if gaps:
+            for q in await self._fan_out_prev_quotes(gaps):
+                by_ticker[q.symbol.ticker] = q
+        return tuple(by_ticker.values())
 
     async def _fan_out_prev_quotes(self, symbols: tuple[Symbol, ...]) -> tuple[Quote, ...]:
         """Per-ticker /prev fallback (works on lower tiers, EOD only)."""
