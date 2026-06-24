@@ -257,11 +257,29 @@ def _generate_template_summary(ctx: _BriefingContext) -> tuple[str, str]:
                 f"| {d.member_name} | {sym} | {action} | {amt} | {d.disclosure_date.date()} |"
             )
 
-    # Push excerpt: short, actionable
+    # Action of the Day — the template can't reason, so it states an explicit
+    # HOLD (a valid call) and points at overlaps for manual review rather than
+    # inventing a trade. The LLM path replaces this with a real BUY/SELL/HOLD.
+    overlap_syms = sorted({d.symbol for d in ctx.overlaps if d.symbol})
+    lines.append("")
+    lines.append("## Action of the Day")
+    lines.append("")
+    if overlap_syms:
+        lines.append(
+            f"**HOLD** — {len(ctx.overlaps)} disclosure(s) touch your holdings "
+            f"({', '.join(overlap_syms)}); review before acting. No automated "
+            "trade call is made without the analyst model."
+        )
+    else:
+        lines.append(
+            "**HOLD** — no disclosures overlap your holdings; nothing actionable today."
+        )
+
+    # Push excerpt: short, actionable — lead with the action.
     overlap_text = f"{len(ctx.overlaps)} overlap(s) with your portfolio. " if ctx.overlaps else ""
     excerpt = (
-        f"📊 {ctx.date.isoformat()}: {len(ctx.disclosures)} new disclosure(s). "
-        f"{overlap_text}Regime: {ctx.market_regime}."
+        f"📊 {ctx.date.isoformat()} — Action: HOLD. "
+        f"{len(ctx.disclosures)} new disclosure(s). {overlap_text}Regime: {ctx.market_regime}."
     )
 
     return "\n".join(lines), excerpt
@@ -275,8 +293,9 @@ async def _generate_llm_summary(
 ) -> tuple[str, str]:
     """LLM-generated summary with natural language + citations.
 
-    Falls back to template if the LLM call fails. The LLM is explicitly
-    instructed NOT to propose trades — it summarizes and contextualizes.
+    Falls back to template if the LLM call fails. The LLM is instructed to end
+    with a clear Action of the Day (BUY/SELL/HOLD) for the investor's own
+    portfolio; HOLD is an explicitly acceptable call.
     """
     template_summary, template_excerpt = _generate_template_summary(ctx)
 
@@ -316,8 +335,13 @@ async def _call_anthropic(ctx: _BriefingContext, api_key: str, model: str) -> tu
                     "(3-5 paragraphs) covering: (1) the most significant trades and what they "
                     "signal, (2) patterns by trader, (3) sector concentration, (4) disclosure "
                     "lag anomalies, and (5) overlaps with held tickers. Be specific with names, "
-                    "tickers, and amounts. Do NOT propose trades or give advice. End with PUSH: "
-                    "followed by a 2-3 sentence summary."
+                    "tickers, and amounts. Then give a clear ACTION OF THE DAY for the "
+                    "investor's own portfolio: a single recommendation stated as BUY <ticker>, "
+                    "SELL <ticker>, or HOLD, with one or two sentences of reasoning grounded in "
+                    "the disclosures and the held tickers. HOLD (do nothing today) is a valid "
+                    "and acceptable call — state it plainly when nothing is actionable and never "
+                    "manufacture a trade. End with PUSH: followed by a 2-3 sentence summary that "
+                    "leads with the action."
                 ),
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -362,8 +386,13 @@ async def _call_openai(ctx: _BriefingContext, api_key: str, model: str) -> tuple
                             "liquidating? (3) sector concentration trends, (4) disclosure lag anomalies "
                             "(trades filed unusually fast or slow), and (5) notable overlaps with the "
                             "investor's held tickers. Be specific with names, tickers, and amounts. "
-                            "You MUST NOT propose trades or give investment advice. End with 'PUSH: '"
-                            "followed by a 2-3 sentence push notification summary."
+                            "Then give a clear ACTION OF THE DAY for the investor's own portfolio: a "
+                            "single recommendation stated as BUY <ticker>, SELL <ticker>, or HOLD, "
+                            "with one or two sentences of reasoning grounded in the disclosures and "
+                            "the held tickers. HOLD (do nothing today) is a valid and acceptable "
+                            "call — state it plainly when nothing is actionable and never manufacture "
+                            "a trade. End with 'PUSH: ' followed by a 2-3 sentence push notification "
+                            "summary that leads with the action."
                         ),
                     },
                     {"role": "user", "content": prompt},
@@ -413,9 +442,15 @@ async def _call_litellm(ctx: _BriefingContext, api_key: str, model: str) -> tupl
                             "   Group by trader. Mark portfolio overlaps with ⚠️.\n"
                             "3. Short bullet list (max 5) of notable patterns or anomalies.\n"
                             "4. One sentence on sector trend.\n"
+                            "5. **Action of the Day** — ONE clear call for the investor's own "
+                            "portfolio, stated as **BUY <ticker>**, **SELL <ticker>**, or "
+                            "**HOLD**, followed by one sentence of reasoning grounded in the "
+                            "disclosures and the held tickers. HOLD (do nothing today) is a "
+                            "valid and acceptable answer — say it plainly when nothing is "
+                            "actionable; never invent a trade to seem useful.\n"
                             "Keep it scannable. No paragraphs longer than 2 sentences. "
-                            "Do NOT propose trades or give advice. "
-                            "End with PUSH: followed by a 1-2 sentence summary."
+                            "End with PUSH: followed by a 1-2 sentence summary that LEADS "
+                            "with the action (BUY/SELL/HOLD)."
                         ),
                     },
                     {"role": "user", "content": prompt},
