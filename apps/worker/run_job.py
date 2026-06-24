@@ -66,9 +66,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"usage: python -m apps.worker.run_job <job_id>\n  job_id one of: {valid}")
         return 2
 
+    import logging
+
     from apps.worker.__main__ import _setup_logging
 
     _setup_logging()
+    # Several jobs (e.g. the briefing) log via the stdlib logging module, which
+    # has no handler unless we add one — without this their output (including
+    # "briefing pushed via Pushover" and Pushover send failures, which are
+    # logged-not-raised) is silently dropped in the CronJob pod.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
     job_id = args[0]
     log.info("cronjob_start", job=job_id)
     JOBS[job_id]()
