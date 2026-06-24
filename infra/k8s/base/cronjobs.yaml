@@ -12,7 +12,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: tracker-daily-briefing
+  name: tracker-daily-digest
   namespace: tracker
   labels:
     app.kubernetes.io/name: tracker
@@ -43,7 +43,7 @@ spec:
             - name: job
               image: harbor.example.com/tracker/tracker-backend:latest
               imagePullPolicy: Always
-              command: ["python", "-m", "apps.worker.run_job", "daily_briefing"]
+              command: ["python", "-m", "apps.worker.run_job", "daily_digest"]
               volumeMounts:
                 - name: holdings
                   mountPath: /app/data/holdings.json
