@@ -14,6 +14,7 @@ def test_jobs_cover_every_scheduled_job() -> None:
     runner invoked by two CronJobs)."""
     assert set(JOBS) == {
         "daily_briefing",
+        "daily_digest",
         "congressional_ingest",
         "token_canary",
         "pipeline_health",

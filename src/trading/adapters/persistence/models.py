@@ -218,6 +218,30 @@ class BriefingRow(Base):
     )
 
 
+# --- Digest ------------------------------------------------------------------
+
+
+class DigestRow(Base):
+    """Daily digest — a full frontier-model report (portfolio + congressional +
+    deployment plan), richer than a briefing. One per date (latest wins)."""
+
+    __tablename__ = "digests"
+    __table_args__ = (Index("ix_digests_date", "digest_date"),)
+
+    digest_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    digest_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    summary_markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    push_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    net_liquidation: Mapped[str | None] = mapped_column(String(32))
+    cash_to_deploy: Mapped[str | None] = mapped_column(String(32))
+    disclosures_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    body_blob_key: Mapped[str | None] = mapped_column(String(256))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
 # --- Audit -------------------------------------------------------------------
 
 

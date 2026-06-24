@@ -25,6 +25,12 @@ def _briefing() -> None:
     run_briefing_sync()
 
 
+def _digest() -> None:
+    from apps.worker.jobs.generate_digest_job import run_digest_sync
+
+    run_digest_sync()
+
+
 def _ingest() -> None:
     from apps.worker.jobs.ingest_congressional import run_ingest_sync
 
@@ -52,6 +58,7 @@ def _vix_alert() -> None:
 # job_id -> runner. job_ids match the APScheduler job ids they replace.
 JOBS: dict[str, Callable[[], None]] = {
     "daily_briefing": _briefing,
+    "daily_digest": _digest,
     "congressional_ingest": _ingest,
     "token_canary": _token_canary,
     "pipeline_health": _pipeline_health,

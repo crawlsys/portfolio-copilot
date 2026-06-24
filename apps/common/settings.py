@@ -78,6 +78,12 @@ class Settings(BaseSettings):
     pushover_user_key: str = Field(default="")
     push_token: str = Field(default="")
 
+    # Daily digest (frontier-model report via OpenRouter)
+    openrouter_api_key: str = Field(default="")
+    digest_model: str = Field(default="anthropic/claude-opus-4.8")
+    digest_cash_to_deploy: str = Field(default="200000")
+    digest_url: str = Field(default="https://trackdash.example.com/digest")
+
 
 @lru_cache
 def get_settings() -> Settings:
