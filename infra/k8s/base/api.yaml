@@ -31,6 +31,13 @@ spec:
               mountPath: /app/data/holdings.json
               subPath: holdings.json
               readOnly: true
+            # The digest chat (/digest/chat) reads the self-directed account
+            # ledger live in the API pod, so it must be mounted here too — not
+            # just in the digest CronJob.
+            - name: holdings
+              mountPath: /app/data/holdings-individual.json
+              subPath: holdings-individual.json
+              readOnly: true
           command:
             - uvicorn
             - apps.api.app:create_app

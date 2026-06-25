@@ -22,6 +22,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
   latency (`web/src/app/healthz/route.ts`).
 
 ### Fixed
+- **API pod missing the self-directed ledger mount**: the `tracker-holdings`
+  ConfigMap was mounted into the API deployment with only `holdings.json` (joint
+  book), not `holdings-individual.json`. The digest CronJob mounts both, so
+  generated digests were fine, but the new live digest chat reads the individual
+  ledger in the API pod and saw an empty/$0 account. Added the
+  `holdings-individual.json` subPath mount to `infra/k8s/base/api.yaml`.
 - **trackdash 502 (web pod never Ready)**: the readiness probe targeted `/`
   with a 1s timeout, but the homepage is `force-dynamic` and does a 1-2s
   server-side API fetch, so the probe always timed out → pod stuck `0/1` →
