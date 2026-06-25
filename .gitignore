@@ -12,6 +12,11 @@ eggs/
 .eggs/
 lib/
 lib64/
+
+# The Python `lib/` rule above also matches the frontend source dir
+# web/src/lib/ — re-include it so the app's helpers are tracked.
+!web/src/lib/
+!web/src/lib/**
 parts/
 sdist/
 var/
