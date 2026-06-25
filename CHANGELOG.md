@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Digest chat** — an interactive, context-aware chatbot on the `/digest` page.
+  Streams (SSE) answers from a model that sees the same context the daily digest
+  is built from (portfolio, holdings, congressional signal, market regime) plus
+  the **last 5 digests**, so it knows what was already recommended/held (e.g.
+  won't re-suggest VTI if it's already bought). Backend `POST /digest/chat`
+  (`apps/api/routes/digest_chat.py`) reuses the digest's context builders; a
+  same-origin Next route handler (`web/src/app/api/digest/chat/route.ts`) proxies
+  to the internal API so the browser never makes a cross-origin call; the
+  `DigestChat` client component has a model picker (Opus 4.8 / Sonnet 4.6 /
+  Gemini Flash). Model allowlist + in-process rate limit guard cost. History is
+  ephemeral (browser-only).
 - **Web `/healthz` probe endpoint**: lightweight route returning 200 without
   calling the backend API, so pod readiness/liveness is decoupled from upstream
   latency (`web/src/app/healthz/route.ts`).

@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     digest_model: str = Field(default="anthropic/claude-opus-4.8")
     digest_cash_to_deploy: str = Field(default="200000")
     digest_url: str = Field(default="https://trackdash.example.com/digest")
+    # Digest chat — default model when the request doesn't pick one; falls back
+    # to digest_model when empty (see apps/api/routes/digest_chat.py).
+    chat_model: str = Field(default="")
 
 
 @lru_cache

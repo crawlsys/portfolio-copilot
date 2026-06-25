@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Newspaper } from "lucide-react";
 import { getLatestDigest, getDigestForDate, getDigestDates } from "@/api/client";
 import { SiteNav } from "@/components/SiteNav";
+import { DigestChat } from "@/components/digest/DigestChat";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,8 @@ export default async function DigestPage({ searchParams }: DigestPageProps) {
               className="digest-prose"
               dangerouslySetInnerHTML={{ __html: digest.summaryHtml }}
             />
+
+            <DigestChat digestDate={digest.digestDate} />
 
             {dates.length > 1 ? (
               <nav className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
