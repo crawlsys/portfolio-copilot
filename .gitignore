@@ -95,8 +95,12 @@ Thumbs.db
 scratch/
 tmp/
 
-# Real account data — never commit (use data/holdings.example.json as a template)
-data/holdings.json
-data/holdings-individual.json
+# Real account data / ledger — THIS REPO IS PUBLIC, never commit real holdings.
+# Only data/holdings.example.json (the genericized template) may be tracked.
+data/holdings*.json
+!data/holdings.example.json
 data/statement*.json
 data/statement*.pdf
+data/*transactions*.json
+data/*transactions*.csv
+data/*Order_Status*.csv
