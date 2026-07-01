@@ -331,6 +331,58 @@ class SchwabBrokerAdapter:
         data = response.json()
         return parse_quote(symbol, data, as_of=datetime.now(UTC))
 
+    async def preview_order(
+        self, account_id: str, order_spec: dict[str, object]
+    ) -> dict[str, object]:
+        """Preview an order spec without submitting. Returns Schwab's projection."""
+        await self._ensure_account_hashes()
+        resolved = self._resolve_account_hash(account_id)
+        client = self._get_client()
+
+        response: httpx.Response = await self._run_sync(
+            client.preview_order, resolved, order_spec
+        )
+        self._check_response(response)
+        # preview responses do contain json (unlike place_order)
+        return dict(response.json())
+
+    async def submit_place_order(
+        self, account_id: str, order_spec: dict[str, object]
+    ) -> str:
+        """Submit a previously-previewed order. Returns the broker order id."""
+        await self._ensure_account_hashes()
+        resolved = self._resolve_account_hash(account_id)
+        client = self._get_client()
+
+        response: httpx.Response = await self._run_sync(
+            client.place_order, resolved, order_spec
+        )
+        self._check_response(response)
+
+        # place_order returns the order id in the Location header, not the body.
+        order_id = _extract_order_id(response)
+        if not order_id:
+            raise SchwabError(
+                "Order submitted but no order id returned in response headers"
+            )
+        return order_id
+
+    async def cancel_order(self, account_id: str, broker_order_id: str) -> bool:
+        """Cancel a working order."""
+        await self._ensure_account_hashes()
+        resolved = self._resolve_account_hash(account_id)
+        client = self._get_client()
+
+        response: httpx.Response = await self._run_sync(
+            client.cancel_order, resolved, broker_order_id
+        )
+        self._check_response(response)
+        return response.status_code in (
+            httpx.codes.OK,
+            httpx.codes.ACCEPTED,
+            httpx.codes.NO_CONTENT,
+        )
+
     def stream_quotes(self, symbols: tuple[Symbol, ...]) -> AsyncIterator[Quote]:
         """Stream real-time quotes. STUB: yields single snapshot per symbol.
 
@@ -350,6 +402,22 @@ class SchwabBrokerAdapter:
         """Clean up resources."""
         self._executor.shutdown(wait=False)
         self._client = None
+
+
+def _extract_order_id(response: httpx.Response) -> str:
+    """Pull the broker order id from a place_order response.
+
+    Schwab returns it in the ``Location`` header (a path ending in the id),
+    not the body. schwab-py has ``Utils.extract_order_id`` for this; we
+    reproduce the logic here to avoid coupling to the utils module's shape.
+    """
+    location = response.headers.get("Location", "") or response.headers.get(
+        "location", ""
+    )
+    if not location:
+        return ""
+    # Location is like: https://api.schwabapi.com/trader/v1/accounts/{hash}/orders/12345
+    return str(location.rstrip("/").rsplit("/", 1)[-1])
 
 
 __all__ = ["SchwabBrokerAdapter"]

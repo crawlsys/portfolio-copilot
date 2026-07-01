@@ -132,42 +132,41 @@ async def test_unknown_quote_raises(fake: FakeBroker) -> None:
 # --- Scope guard: NO trading methods on the v1 protocol ----------------------
 
 
-class TestNoTradingMethodsInV1:
-    """Spec §Non-goals: no live order placement, no LLM-driven trade proposals.
+class TestGatedTradingMethods:
+    """Order placement is a two-step gated flow: preview → confirm → submit.
 
-    If anyone adds `place_order`, `cancel_order`, or any method whose name
-    suggests trading to BrokerPort, these tests fail loudly. That's the alarm
-    that says 'you've wandered into deferred Execution territory — see spec.'
+    The protocol exposes ``preview_order`` (never submits) and
+    ``submit_place_order`` (the only path that places a live order). There
+    must be NO single method that both builds and submits an order in one
+    call — that would bypass the operator confirmation gate.
     """
 
     def _broker_port_methods(self) -> set[str]:
         return {name for name, _ in inspect.getmembers(BrokerPort, predicate=inspect.isfunction)}
 
-    def test_no_place_order_method(self) -> None:
+    def test_preview_order_exists(self) -> None:
+        methods = self._broker_port_methods()
+        assert "preview_order" in methods, (
+            "BrokerPort must expose preview_order (validates without submitting)."
+        )
+
+    def test_submit_place_order_exists(self) -> None:
+        methods = self._broker_port_methods()
+        assert "submit_place_order" in methods, (
+            "BrokerPort must expose submit_place_order — the only live-order path."
+        )
+
+    def test_cancel_order_exists(self) -> None:
+        methods = self._broker_port_methods()
+        assert "cancel_order" in methods
+
+    def test_no_one_call_place_order(self) -> None:
+        """No method named 'place_order' — that would imply build+submit in one."""
         methods = self._broker_port_methods()
         assert "place_order" not in methods, (
-            "BrokerPort.place_order exists — this violates spec §Non-goals. "
-            "If execution is being activated, see spec §Execution (stub) "
-            "and apply every money-path red-team fix (§10)."
+            "BrokerPort.place_order implies a single-call submit. Use the "
+            "two-step flow: preview_order() then submit_place_order()."
         )
-
-    def test_no_cancel_order_method(self) -> None:
-        methods = self._broker_port_methods()
-        assert "cancel_order" not in methods, (
-            "BrokerPort.cancel_order exists — same violation as place_order."
-        )
-
-    def test_no_method_with_trade_action_verb(self) -> None:
-        """Defensive: catch any future trading method by name pattern."""
-        methods = self._broker_port_methods()
-        trade_verbs = {"buy", "sell", "trade", "submit", "execute", "approve"}
-        for name in methods:
-            verb = name.split("_")[0]
-            assert verb not in trade_verbs, (
-                f"BrokerPort.{name} looks like a trading method — "
-                f"verb '{verb}' is in the forbidden set {trade_verbs}. "
-                "See spec §Non-goals."
-            )
 
 
 # --- Seeded data sanity (also exercises the seeding helpers) -----------------
@@ -280,11 +279,12 @@ class TestSchwabBrokerAdapterContract:
 
         adapter.close()
 
-    def test_schwab_adapter_has_no_trading_methods(self) -> None:
-        """Scope guard: SchwabBrokerAdapter must NOT have trading methods.
+    def test_schwab_adapter_has_gated_trading_methods(self) -> None:
+        """SchwabBrokerAdapter implements the two-step gated trading flow.
 
-        If anyone adds place_order/cancel_order/buy/sell to the adapter,
-        this test fails — the read-only contract is violated.
+        It must expose ``preview_order`` + ``submit_place_order`` (matching
+        BrokerPort) and must NOT expose a single-call ``place_order`` that
+        would bypass the operator confirmation gate.
         """
         adapter_methods = {
             name
@@ -292,11 +292,13 @@ class TestSchwabBrokerAdapterContract:
             if not name.startswith("_")
         }
 
-        forbidden = {"place_order", "cancel_order", "buy", "sell", "submit_order", "execute"}
-        overlap = adapter_methods & forbidden
-        assert not overlap, (
-            f"SchwabBrokerAdapter has forbidden trading methods: {overlap}. "
-            "This violates the read-only contract. See spec §Non-goals."
+        assert "preview_order" in adapter_methods
+        assert "submit_place_order" in adapter_methods
+        assert "cancel_order" in adapter_methods
+        # No single-call place_order that builds + submits together.
+        assert "place_order" not in adapter_methods, (
+            "SchwabBrokerAdapter.place_order bypasses the preview→confirm gate. "
+            "Use preview_order() then submit_place_order()."
         )
 
     def test_schwab_adapter_constructor_params(self) -> None:

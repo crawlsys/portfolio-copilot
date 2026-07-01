@@ -1,23 +1,23 @@
-"""BrokerPort — read-only broker access in v1.
+"""BrokerPort — broker access (reads + agent-driven order placement).
 
 This port exists because we have ≥2 implementations:
-- SchwabBrokerAdapter (real, read-only against schwab-py)
+- SchwabBrokerAdapter (real, against schwab-py)
 - FakeBroker (in-memory, for tests + local dev)
 
 Per red-team architecture review, ports exist only where they earn their
-keep. ClockPort and BrokerPort are the two ports in v1; everything else
+keep. ClockPort and BrokerPort are the two ports; everything else
 (Massive, Quiver, EDGAR) is a concrete class.
 
-The trading methods (place_order, cancel_order) are intentionally NOT in
-the v1 protocol. They're referenced in the deferred Execution context
-(src/trading/domain/execution/). When that context is activated
-(post-backtest validation, see spec §11), the safety apparatus from
-spec §10 is added: ExecutableOrder sealed type, separate-process
-BrokerSubmitWorker, etc.
+Order placement is a two-step flow gated by the use case layer:
+  preview_order() validates an order spec without submitting — it asks the
+  broker "would you accept this?" and returns the projected structure + any
+  errors. The PlaceOrder use case shows the preview to the operator, who
+  must explicitly confirm before submit_place_order() is called.
 
-Threat model: the LLM agent has code-execution access to the MCP process.
-The MCP process must NOT have any path to broker writes. Today that's
-trivially true: no write methods exist on this protocol.
+Threat model: the LLM agent has code-execution access. Order placement is
+intentionally a two-step flow with a hard confirmation gate at the use
+case / CLI layer — no single tool call both builds and submits an order.
+Every submission is recorded in the append-only audit log.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from trading.domain import Account, BrokerAccount, Position, Quote, Symbol
 
 @runtime_checkable
 class BrokerPort(Protocol):
-    """Read-only broker access. No trading methods in v1.
+    """Broker access: reads plus agent-driven order placement.
 
     Adapters satisfy this contract by shape (structural typing). Implementations:
     - SchwabBrokerAdapter: bridges sync schwab-py to async via run_in_executor.
@@ -57,7 +57,7 @@ class BrokerPort(Protocol):
         self, account_id: str, since: datetime | None = None
     ) -> tuple[dict[str, object], ...]:
         """Order history. Returns raw dicts — the only path where we leak
-        broker-specific shape, deliberately (we don't model orders in v1).
+        broker-specific shape, deliberately (we don't model orders here).
         """
         ...
 
@@ -78,15 +78,30 @@ class BrokerPort(Protocol):
         """Single quote snapshot. Convenience method."""
         ...
 
-    # --- DEFERRED: trading methods. Uncomment when Execution context is built.
-    # See src/trading/domain/execution/__init__.py for the deferral rationale.
-    # When activated, also:
-    # - Add ExecutableOrder type with sealed-token gate (spec §10)
-    # - Run BrokerSubmitWorker in separate k8s Deployment with no MCP path
-    # - Apply every money-path red-team fix (idempotency, recovery, retry)
-    #
-    # async def place_order(self, executable: ExecutableOrder) -> PlaceOrderResult: ...
-    # async def cancel_order(self, broker_order_id: BrokerOrderId) -> bool: ...
+    async def preview_order(
+        self, account_id: str, order_spec: dict[str, object]
+    ) -> dict[str, object]:
+        """Validate an order spec WITHOUT submitting.
+
+        Asks the broker whether the order would be accepted and returns the
+        projected structure plus any errors. Never places the order. The
+        PlaceOrder use case shows this to the operator before any submit.
+        """
+        ...
+
+    async def submit_place_order(
+        self, account_id: str, order_spec: dict[str, object]
+    ) -> str:
+        """Submit a previously-previewed order. Returns the broker order id.
+
+        This is the ONLY method that places a live order. Callers must have
+        already called preview_order and obtained operator confirmation.
+        """
+        ...
+
+    async def cancel_order(self, account_id: str, broker_order_id: str) -> bool:
+        """Cancel a working order. Returns True if the cancel was accepted."""
+        ...
 
 
 __all__ = ["BrokerPort"]

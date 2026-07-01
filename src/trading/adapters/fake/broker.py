@@ -44,6 +44,7 @@ class FakeBroker:
         self._balances: dict[str, dict[str, Money]] = {}
         self._quotes: dict[str, Quote] = {}
         self._orders: dict[str, list[dict[str, object]]] = {}
+        self._paper_orders: dict[str, dict[str, object]] = {}
         self._transactions: dict[str, list[dict[str, object]]] = {}
 
     # --- Mutation helpers (test/dev only; NOT on the BrokerPort protocol) ----
@@ -201,6 +202,38 @@ class FakeBroker:
         if symbol.ticker not in self._quotes:
             raise KeyError(f"No quote for {symbol.ticker}")
         return self._quotes[symbol.ticker]
+
+    async def preview_order(
+        self, account_id: str, order_spec: dict[str, object]
+    ) -> dict[str, object]:
+        """Paper preview: accept anything structurally valid. Never submits."""
+        if account_id not in self._balances:
+            raise KeyError(f"Unknown account: {account_id}")
+        return {
+            "accepted": True,
+            "orderType": order_spec.get("orderType"),
+            "session": order_spec.get("session"),
+            "duration": order_spec.get("duration"),
+            "estimatedCost": "n/a (paper)",
+        }
+
+    async def submit_place_order(
+        self, account_id: str, order_spec: dict[str, object]
+    ) -> str:
+        """Paper submit: assign a synthetic order id. Does not affect balances
+        (a PaperBroker that simulates fills is a future addition)."""
+        if account_id not in self._balances:
+            raise KeyError(f"Unknown account: {account_id}")
+        oid = f"PAPER-{len(self._paper_orders) + 1:06d}"
+        self._paper_orders[oid] = dict(order_spec)
+        return oid
+
+    async def cancel_order(self, account_id: str, broker_order_id: str) -> bool:
+        """Paper cancel."""
+        if broker_order_id in self._paper_orders:
+            self._paper_orders.pop(broker_order_id, None)
+            return True
+        return False
 
     # --- Internals -----------------------------------------------------------
 
