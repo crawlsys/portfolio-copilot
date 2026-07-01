@@ -219,7 +219,7 @@ async def _resolve_quantity(
     is computed from the quote and rounded DOWN to whole shares.
     """
     quote = await broker.get_quote(Symbol(cmd.symbol))
-    ref_price = Decimal(str(quote.last.amount))  # type: ignore[attr-defined]
+    ref_price = Decimal(str(quote.last))
 
     if cmd.quantity is not None:
         qty = int(cmd.quantity)

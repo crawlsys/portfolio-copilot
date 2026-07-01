@@ -108,11 +108,6 @@ class _FakeAccount:
     buying_power: _FakeMoney
 
 
-@dataclass
-class _FakeQuote:
-    last: _FakeMoney
-
-
 class _StubBroker:
     """Minimal broker stub for preview() tests. Never submits."""
 
@@ -124,8 +119,11 @@ class _StubBroker:
     async def get_account(self, account_id: str) -> _FakeAccount:
         return _FakeAccount(buying_power=_FakeMoney(self._bp))
 
-    async def get_quote(self, symbol: Symbol) -> _FakeQuote:
-        return _FakeQuote(last=_FakeMoney(self._price))
+    async def get_quote(self, symbol: Symbol) -> object:
+        # Real Quote.last is a Decimal (not Money). Return a stub with that shape.
+        class _Q:
+            last = self._price
+        return _Q()
 
     async def preview_order(
         self, account_id: str, order_spec: dict[str, object]

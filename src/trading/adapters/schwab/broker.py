@@ -97,6 +97,7 @@ class SchwabBrokerAdapter:
 
         # Preferred: native token file, consumed directly by schwab-py.
         if self._token_path is not None:
+            import shutil  # noqa: PLC0415
             from pathlib import Path  # noqa: PLC0415
 
             token_file = Path(self._token_path)
@@ -105,9 +106,18 @@ class SchwabBrokerAdapter:
                     f"No Schwab token file at {self._token_path}. "
                     "Run scripts/schwab_login.py to authenticate."
                 )
+            # schwab-py writes refreshed tokens back to token_path. If the
+            # source is read-only (mounted from a k8s Secret), copy it to a
+            # writable location first so refreshes persist for the pod's life.
+            writable_path = self._token_path
+            try:
+                token_file.touch()  # raises if read-only
+            except OSError:
+                writable_path = str(Path(tempfile.gettempdir()) / "schwab_token.json")
+                shutil.copy2(self._token_path, writable_path)
             try:
                 self._client = auth.client_from_token_file(
-                    token_path=self._token_path,
+                    token_path=writable_path,
                     api_key=self._client_id,
                     app_secret=self._client_secret,
                     asyncio=False,
@@ -204,6 +214,11 @@ class SchwabBrokerAdapter:
 
         if response.status_code == httpx.codes.NOT_FOUND:
             raise SchwabAccountNotFoundError(f"Resource not found: {response.text}")
+
+        # 2xx is success (Schwab returns 201 Created for order placement).
+        # No-content (204) is also success for some endpoints.
+        if 200 <= response.status_code < 300:
+            return
 
         raise SchwabError(f"API error {response.status_code}: {response.text}")
 
