@@ -161,6 +161,32 @@ class SchwabBrokerAdapter:
             if hash_value:
                 self._account_hashes[hash_value] = account_number
 
+    def _resolve_account_hash(self, account_id: str) -> str:
+        """Normalize an account identifier to its Schwab hash.
+
+        Accepts any of:
+        - The hash itself (``B1468FC...``) — used internally.
+        - The raw account number (``54245456``).
+        - A masked id (``5424-5456``) — the human-friendly form used in
+          Schwab statements, the dashboard, and the FakeBroker era.
+
+        Raises SchwabAccountNotFoundError if no account matches.
+        """
+        if account_id in self._account_hashes:
+            return account_id
+
+        # Try matching by raw or masked account number.
+        normalized = account_id.replace("-", "")
+        for hash_value, account_number in self._account_hashes.items():
+            if account_number == normalized or account_number == account_id:
+                return hash_value
+            # Masked form: ****5456 matches an account ending in 5456.
+            suffix = account_id.replace("*", "").replace("-", "")
+            if len(suffix) >= 4 and account_number.endswith(suffix):
+                return hash_value
+
+        raise SchwabAccountNotFoundError(f"Unknown account: {account_id}")
+
     def _check_response(self, response: httpx.Response) -> None:
         """Check response status and raise appropriate exceptions."""
         if response.status_code == httpx.codes.OK:
@@ -217,21 +243,20 @@ class SchwabBrokerAdapter:
         """Get full account snapshot with balances and positions."""
         await self._ensure_account_hashes()
 
-        if account_id not in self._account_hashes:
-            raise SchwabAccountNotFoundError(f"Unknown account: {account_id}")
+        resolved = self._resolve_account_hash(account_id)
 
         client = self._get_client()
         schwab_client = self._get_schwab_client_class()
 
         response: httpx.Response = await self._run_sync(
             client.get_account,
-            account_id,
+            resolved,
             fields=[schwab_client.Account.Fields.POSITIONS],
         )
         self._check_response(response)
 
         data = response.json()
-        return parse_account(account_id, data, as_of=datetime.now(UTC))
+        return parse_account(resolved, data, as_of=datetime.now(UTC))
 
     async def get_positions(self, account_id: str) -> tuple[Position, ...]:
         """Get all positions for an account."""
@@ -244,8 +269,7 @@ class SchwabBrokerAdapter:
         """Get order history. Returns raw dicts (orders not modeled in v1)."""
         await self._ensure_account_hashes()
 
-        if account_id not in self._account_hashes:
-            raise SchwabAccountNotFoundError(f"Unknown account: {account_id}")
+        resolved = self._resolve_account_hash(account_id)
 
         client = self._get_client()
 
@@ -256,7 +280,7 @@ class SchwabBrokerAdapter:
 
         response: httpx.Response = await self._run_sync(
             client.get_orders_for_account,
-            account_id,
+            resolved,
             from_entered_datetime=from_dt,
             to_entered_datetime=to_dt,
         )
@@ -271,8 +295,7 @@ class SchwabBrokerAdapter:
         """Get transaction history. Returns raw dicts."""
         await self._ensure_account_hashes()
 
-        if account_id not in self._account_hashes:
-            raise SchwabAccountNotFoundError(f"Unknown account: {account_id}")
+        resolved = self._resolve_account_hash(account_id)
 
         client = self._get_client()
 
@@ -281,7 +304,7 @@ class SchwabBrokerAdapter:
 
         response: httpx.Response = await self._run_sync(
             client.get_transactions,
-            account_id,
+            resolved,
             start_date=from_dt,
             end_date=to_dt,
         )

@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 
 from apps.common.composition import Composition, session_factory
+from trading.adapters.schwab.exceptions import SchwabAccountNotFoundError as _AccountNotFound
 from trading.application.common.unit_of_work import UnitOfWork
 from trading.application.market_data.refresh_quotes import (
     NoMarketData,
@@ -88,7 +89,7 @@ async def get_account(
     comp: Composition = request.app.state.composition
     try:
         account = await comp.broker.get_account(account_id)
-    except KeyError:
+    except (KeyError, _AccountNotFound):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown account: {account_id}",
@@ -100,7 +101,7 @@ async def get_account(
 
     try:
         positions = await comp.broker.get_positions(account_id)
-    except KeyError:
+    except (KeyError, _AccountNotFound):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown account: {account_id}",
