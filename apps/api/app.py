@@ -36,9 +36,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         aws_access_key_id=settings.aws_access_key_id,
         aws_secret_access_key=settings.aws_secret_access_key,
         push_provider=settings.push_provider,
+        pushover_api_token=settings.pushover_api_token,
+        pushover_user_key=settings.pushover_user_key,
         ntfy_server_url=settings.ntfy_server_url,
         ntfy_topic=settings.ntfy_topic,
         ntfy_auth_token=settings.ntfy_auth_token,
+        schwab_client_id=settings.schwab_client_id,
+        schwab_client_secret=settings.schwab_client_secret,
+        schwab_redirect_uri=settings.schwab_redirect_uri,
+        schwab_token_path=settings.schwab_token_path,
     )
     app.state.composition = comp
     yield

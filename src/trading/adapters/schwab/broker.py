@@ -63,11 +63,16 @@ class SchwabBrokerAdapter:
         redirect_uri: str,
         token_store: TokenStore | None = None,
         executor: ThreadPoolExecutor | None = None,
+        token_path: str | None = None,
     ):
         self._client_id = client_id
         self._client_secret = client_secret
         self._redirect_uri = redirect_uri
-        self._token_store = token_store or FileTokenStore()
+        # token_path takes precedence: it's the schwab-py native token file
+        # written by the OAuth login flow (and refreshed by schwab-py itself).
+        # Falls back to the FileTokenStore abstraction if set.
+        self._token_path = token_path
+        self._token_store = token_store or (FileTokenStore() if token_path is None else None)
         self._executor = executor or ThreadPoolExecutor(max_workers=4)
         self._client: Client | None = None
         self._account_hashes: dict[str, str] = {}
@@ -78,13 +83,41 @@ class SchwabBrokerAdapter:
         return await loop.run_in_executor(self._executor, lambda: func(*args, **kwargs))
 
     def _get_client(self) -> Client:
-        """Lazy-init the schwab Client from stored tokens.
+        """Lazy-init the schwab Client from the stored token.
 
-        Raises SchwabAuthError if tokens don't exist or are expired.
+        Preferred path: read schwab-py's native token file at ``token_path``
+        (written by ``scripts/schwab_login.py`` and refreshed in place by
+        schwab-py). Falls back to the FileTokenStore abstraction otherwise.
+
+        Raises SchwabAuthError if no tokens exist or the refresh token
+        has expired (7-day hard cap from Schwab).
         """
         if self._client is not None:
             return self._client
 
+        # Preferred: native token file, consumed directly by schwab-py.
+        if self._token_path is not None:
+            from pathlib import Path  # noqa: PLC0415
+
+            token_file = Path(self._token_path)
+            if not token_file.exists():
+                raise SchwabAuthError(
+                    f"No Schwab token file at {self._token_path}. "
+                    "Run scripts/schwab_login.py to authenticate."
+                )
+            try:
+                self._client = auth.client_from_token_file(
+                    token_path=self._token_path,
+                    api_key=self._client_id,
+                    app_secret=self._client_secret,
+                    asyncio=False,
+                )
+            except Exception as e:
+                raise SchwabAuthError(f"Failed to create client from token file: {e}") from e
+            return self._client
+
+        # Legacy fallback: FileTokenStore (custom format) -> temp file.
+        assert self._token_store is not None
         tokens = self._token_store.load()
         if tokens is None:
             raise SchwabAuthError("No OAuth tokens found. Run the OAuth flow to authenticate.")

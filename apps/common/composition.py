@@ -58,13 +58,37 @@ def make_composition(
     s3_bucket: str = "tracker-blobs",
     aws_access_key_id: str = "",
     aws_secret_access_key: str = "",
+    schwab_client_id: str = "",
+    schwab_client_secret: str = "",
+    schwab_redirect_uri: str = "",
+    schwab_token_path: str = "",
 ) -> Composition:
     """Construct the wired application based on settings."""
     bus = EventBus()
     clock = SystemClock()
 
-    # Broker
-    broker: BrokerPort = make_default_fake_broker()
+    # Broker — live Schwab when configured + tokens present, else FakeBroker
+    broker: BrokerPort
+    if (
+        broker_mode == "schwab"
+        and schwab_client_id
+        and schwab_client_secret
+    ):
+        from trading.adapters.schwab.broker import SchwabBrokerAdapter  # noqa: PLC0415
+
+        # Default token path: the schwab-py native file mounted into the pod
+        # as a secret (key=token.json). The OAuth login flow
+        # (scripts/schwab_login.py) writes this format.
+        token_path = schwab_token_path or "/etc/schwab/token.json"
+
+        broker = SchwabBrokerAdapter(
+            client_id=schwab_client_id,
+            client_secret=schwab_client_secret,
+            redirect_uri=schwab_redirect_uri or "https://127.0.0.1:8080/callback",
+            token_path=token_path,
+        )
+    else:
+        broker = make_default_fake_broker()
 
     # Market data
     if massive_api_key:

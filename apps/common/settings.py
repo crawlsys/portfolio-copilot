@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     schwab_client_id: str = Field(default="")
     schwab_client_secret: str = Field(default="")
     schwab_redirect_uri: str = Field(default="http://localhost:8000/schwab/callback")
+    # Path to the schwab-py native token file (mounted as a secret in k8s).
+    # Written by scripts/schwab_login.py; refreshed in place by schwab-py.
+    schwab_token_path: str = Field(default="/etc/schwab/token.json")
 
     # Market data
     massive_api_key: str = Field(default="")
