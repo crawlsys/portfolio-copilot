@@ -1,11 +1,41 @@
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
+// Tremor builds chart color classes dynamically (e.g. `fill-cyan-500`) inside
+// its minified bundle, so Tailwind's content scanner never sees them as
+// literals and doesn't emit the CSS — charts render with no fill (black).
+// Safelist the chart color/shade combos we use so the classes always exist.
+const TREMOR_CHART_COLORS = [
+  "cyan", "emerald", "amber", "rose", "indigo",
+  "violet", "sky", "teal", "blue", "green", "orange", "pink",
+];
+const TREMOR_CHART_SHADES = ["400", "500", "600"];
+
 const config: Config = {
   darkMode: ["class"],
   content: [
     "./src/**/*.{ts,tsx}",
     "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    // fill-* (donut/bar segment fills) + dark variants
+    ...TREMOR_CHART_COLORS.flatMap((c) =>
+      TREMOR_CHART_SHADES.flatMap((s) => [
+        `fill-${c}-${s}`,
+        `dark:fill-${c}-${s}`,
+        `stroke-${c}-${s}`,
+        `dark:stroke-${c}-${s}`,
+      ]),
+    ),
+    // Tremor component text/border tokens used in tooltips
+    ...TREMOR_CHART_COLORS.flatMap((c) =>
+      TREMOR_CHART_SHADES.flatMap((s) => [
+        `text-${c}-${s}`,
+        `dark:text-${c}-${s}`,
+        `bg-${c}-${s}`,
+        `dark:bg-${c}-${s}`,
+      ]),
+    ),
   ],
   theme: {
     extend: {
