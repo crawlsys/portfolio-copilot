@@ -84,6 +84,7 @@ def main() -> int:
         callback_url=callback_url,
         token_path=str(token_path),
         asyncio=False,
+        interactive=False,
     )
 
     # Sanity check: pull account numbers to confirm the tokens work.

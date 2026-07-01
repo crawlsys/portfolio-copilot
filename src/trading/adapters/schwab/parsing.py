@@ -15,6 +15,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from trading.domain import AccountType, AssetClass, Money, Symbol
+from trading.domain.common.value_objects import coerce_symbol
 from trading.domain.market_data.entities import Quote
 from trading.domain.portfolio.entities import Account, BrokerAccount, Position
 
@@ -181,10 +182,16 @@ def parse_position(
 
 
 def _parse_symbol(raw_symbol: str, asset_type: str) -> Symbol:
-    """Convert Schwab symbol + asset type to domain Symbol."""
+    """Convert Schwab symbol + asset type to domain Symbol.
+
+    Schwab returns CUSIPs (e.g. ``91282CMW8`` for Treasuries) and other
+    non-equity identifiers in ``instrument.symbol``. Equity tickers
+    validate normally; anything else is coerced to FIXED_INCOME so its
+    market value is never lost.
+    """
     if asset_type == "OPTION":
         return Symbol(raw_symbol, asset_class=AssetClass.OPTION)
-    return Symbol(raw_symbol, asset_class=AssetClass.EQUITY)
+    return coerce_symbol(raw_symbol)
 
 
 def parse_quote(symbol: Symbol, quote_data: dict[str, Any], as_of: datetime | None = None) -> Quote:

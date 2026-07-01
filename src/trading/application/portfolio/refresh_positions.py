@@ -25,7 +25,7 @@ from uuid import UUID
 
 from sqlalchemy import delete
 
-from trading.adapters.persistence.models import PositionRow
+from trading.adapters.persistence.models import BrokerAccountRow, PositionRow
 from trading.domain import (
     AggregateType,
     DomainEvent,
@@ -90,6 +90,11 @@ async def execute(
     session: AsyncSession = uow.session
 
     fresh_positions = await broker.get_positions(cmd.account_id)
+    # Ensure the parent broker_accounts row exists before inserting positions
+    # (positions.account_id has an FK to broker_accounts.account_id). The Schwab
+    # adapter keys accounts by hash; the FakeBroker by a synthetic id — either
+    # way, the row must be present or the FK violation trips on first refresh.
+    await _upsert_local_account(session, broker, cmd.account_id, now)
     prior_positions = await _load_local_positions(session, cmd.account_id)
     prior_by_symbol = {p.symbol.ticker: p for p in prior_positions}
 
@@ -165,6 +170,48 @@ async def _load_local_positions(session: AsyncSession, account_id: str) -> tuple
             )
         )
     return tuple(positions)
+
+
+async def _upsert_local_account(
+    session: AsyncSession, broker: BrokerPort, account_id: str, now: datetime
+) -> None:
+    """Ensure the broker_accounts row exists for an account.
+
+    Looks up the account metadata from the broker and upserts it. If the
+    broker can't describe the account (e.g. FakeBroker without the id),
+    this is a no-op row is already present from seeding.
+    """
+    try:
+        accounts = await broker.get_accounts()
+    except Exception:  # noqa: BLE001
+        # Broker doesn't support account listing — assume seeded elsewhere.
+        return
+
+    target = next((a for a in accounts if a.account_id == account_id), None)
+    if target is None:
+        return
+
+    existing = await session.get(BrokerAccountRow, account_id)
+    if existing is not None:
+        # Refresh metadata (nickname/type can change) but keep is_paper.
+        existing.nickname = target.nickname
+        existing.masked_schwab_id = target.masked_schwab_id
+        existing.account_type = target.account_type.name
+        existing.margin_enabled = target.margin_enabled
+        existing.allowed_instruments = sorted(a.name for a in target.allowed_instruments)
+        existing.updated_at = now
+        return
+
+    session.add(
+        BrokerAccountRow(
+            account_id=target.account_id,
+            nickname=target.nickname,
+            masked_schwab_id=target.masked_schwab_id,
+            account_type=target.account_type.name,
+            margin_enabled=target.margin_enabled,
+            allowed_instruments=sorted(a.name for a in target.allowed_instruments),
+        )
+    )
 
 
 async def _upsert_local_position(session: AsyncSession, pos: Position, now: datetime) -> None:

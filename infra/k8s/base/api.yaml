@@ -22,6 +22,9 @@ spec:
         - name: holdings
           configMap:
             name: tracker-holdings
+        - name: schwab-token
+          secret:
+            secretName: tracker-schwab-token
       containers:
         - name: api
           image: harbor.example.com/tracker/tracker-backend:latest
@@ -37,6 +40,9 @@ spec:
             - name: holdings
               mountPath: /app/data/holdings-individual.json
               subPath: holdings-individual.json
+              readOnly: true
+            - name: schwab-token
+              mountPath: /etc/schwab
               readOnly: true
           command:
             - uvicorn
