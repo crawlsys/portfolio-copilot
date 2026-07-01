@@ -257,13 +257,21 @@ def average_value_currency(*monies: Money) -> str:
 
 
 def make_default_fake_broker() -> FakeBroker:
-    """Construct a FakeBroker seeded with real positions if available.
+    """Construct a FakeBroker seeded with positions if available.
 
-    Reads data/holdings.json (produced by scripts/parse_schwab_statement.py)
-    if present. Falls back to a small sample account when the JSON is absent
-    (CI, fresh checkouts, tests that don't need real data).
+    Reads the file at $HOLDINGS_FILE (default: data/holdings.json) if present.
+    Useful for demo data: set HOLDINGS_FILE=data/holdings-demo.json. Falls
+    back to a small sample account when no file is found (CI, fresh checkouts,
+    tests that don't need real data).
     """
-    holdings_path = Path(__file__).resolve().parents[4] / "data" / "holdings.json"
+    import os  # noqa: PLC0415
+
+    data_dir = Path(__file__).resolve().parents[4] / "data"
+    env_file = os.environ.get("HOLDINGS_FILE", "")
+    holdings_path = (
+        Path(env_file) if env_file
+        else data_dir / "holdings.json"
+    )
     if holdings_path.exists():
         return _broker_from_holdings(holdings_path)
     return _broker_from_sample()

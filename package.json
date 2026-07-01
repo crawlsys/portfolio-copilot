@@ -4,5 +4,8 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "web": "pnpm --dir web"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
   }
 }

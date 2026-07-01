@@ -96,9 +96,12 @@ scratch/
 tmp/
 
 # Real account data / ledger — THIS REPO IS PUBLIC, never commit real holdings.
-# Only data/holdings.example.json (the genericized template) may be tracked.
+# Only synthetic/example files may be tracked:
+#   data/holdings.example.json (genericized template)
+#   data/holdings-demo.json   (anonymized demo data for screenshots/dev)
 data/holdings*.json
 !data/holdings.example.json
+!data/holdings-demo.json
 data/statement*.json
 data/statement*.pdf
 data/*transactions*.json

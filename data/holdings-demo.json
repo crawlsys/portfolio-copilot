@@ -1,0 +1,153 @@
+{
+  "account_id": "demo-account",
+  "masked_schwab_id": "****-0456",
+  "nickname": "Demo Brokerage",
+  "managed": false,
+  "managed_note": "self-directed",
+  "ending_value": "101823.50",
+  "cash": "24500.00",
+  "cash_note": "dry powder — staged deployment in progress",
+  "holdings": [
+    {
+      "symbol": "VTI",
+      "description": "VANGUARD TOTAL STOCK MARKET ETF",
+      "quantity": "45",
+      "price": "268.40",
+      "market_value": "12078.00",
+      "cost_basis": "11250.00",
+      "unrealized_pnl": "828.00",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "AAPL",
+      "description": "APPLE INC",
+      "quantity": "40",
+      "price": "229.87",
+      "market_value": "9194.80",
+      "cost_basis": "6400.00",
+      "unrealized_pnl": "2794.80",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "MSFT",
+      "description": "MICROSOFT CORP",
+      "quantity": "18",
+      "price": "420.55",
+      "market_value": "7569.90",
+      "cost_basis": "5400.00",
+      "unrealized_pnl": "2169.90",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "NVDA",
+      "description": "NVIDIA CORP",
+      "quantity": "22",
+      "price": "124.30",
+      "market_value": "2734.60",
+      "cost_basis": "1320.00",
+      "unrealized_pnl": "1414.60",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "GOOGL",
+      "description": "ALPHABET INC CL A",
+      "quantity": "25",
+      "price": "173.42",
+      "market_value": "4335.50",
+      "cost_basis": "3750.00",
+      "unrealized_pnl": "585.50",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "VBR",
+      "description": "VANGUARD SMALL-CAP VALUE ETF",
+      "quantity": "35",
+      "price": "178.20",
+      "market_value": "6237.00",
+      "cost_basis": "7000.00",
+      "unrealized_pnl": "-763.00",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "AVGO",
+      "description": "BROADCOM INC",
+      "quantity": "12",
+      "price": "165.80",
+      "market_value": "1989.60",
+      "cost_basis": "1560.00",
+      "unrealized_pnl": "429.60",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "VXUS",
+      "description": "VANGUARD TOTAL INTL STOCK ETF",
+      "quantity": "30",
+      "price": "62.15",
+      "market_value": "1864.50",
+      "cost_basis": "1950.00",
+      "unrealized_pnl": "-85.50",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "BND",
+      "description": "VANGUARD TOTAL BOND MARKET ETF",
+      "quantity": "50",
+      "price": "73.20",
+      "market_value": "3660.00",
+      "cost_basis": "3750.00",
+      "unrealized_pnl": "-90.00",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "SGOV",
+      "description": "ISHARES 0-3 MONTH TREASURY ETF",
+      "quantity": "80",
+      "price": "100.38",
+      "market_value": "8030.40",
+      "cost_basis": "8000.00",
+      "unrealized_pnl": "30.40",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "META",
+      "description": "META PLATFORMS INC",
+      "quantity": "8",
+      "price": "502.75",
+      "market_value": "4022.00",
+      "cost_basis": "3200.00",
+      "unrealized_pnl": "822.00",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "COST",
+      "description": "COSTCO WHOLESALE CORP",
+      "quantity": "6",
+      "price": "845.30",
+      "market_value": "5071.80",
+      "cost_basis": "4500.00",
+      "unrealized_pnl": "571.80",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "JNJ",
+      "description": "JOHNSON & JOHNSON",
+      "quantity": "20",
+      "price": "152.10",
+      "market_value": "3042.00",
+      "cost_basis": "3200.00",
+      "unrealized_pnl": "-158.00",
+      "asset_class": "EQUITY"
+    },
+    {
+      "symbol": "VTIP",
+      "description": "VANGUARD SHORT-TERM TIPS ETF",
+      "quantity": "25",
+      "price": "49.85",
+      "market_value": "1246.25",
+      "cost_basis": "1250.00",
+      "unrealized_pnl": "-3.75",
+      "asset_class": "EQUITY"
+    }
+  ],
+  "source": "synthetic demo data — anonymized, not from any real account"
+}
