@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # Path to the schwab-py native token file (mounted as a secret in k8s).
     # Written by scripts/schwab_login.py; refreshed in place by schwab-py.
     schwab_token_path: str = Field(default="/etc/schwab/token.json")
+    # Account hash of the self-directed account — used by the recommendation
+    # ledger's acted-on detector. Empty → detection is skipped (best-effort).
+    self_directed_account_id: str = Field(default="")
 
     # Market data
     massive_api_key: str = Field(default="")

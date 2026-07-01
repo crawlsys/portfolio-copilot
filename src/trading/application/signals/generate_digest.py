@@ -13,30 +13,45 @@ key is configured, so the daily push is never lost.
 from __future__ import annotations
 
 import json
+import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
 from sqlalchemy import select
 
-from trading.adapters.persistence.models import DigestRow, PositionRow, TradeDisclosureRow
+from trading.adapters.persistence.models import (
+    DigestRow,
+    PositionRow,
+    RecommendationRow,
+    TradeDisclosureRow,
+)
 from trading.application.signals.generate_briefing import (
     _assess_market_regime,
     _fetch_disclosures,
     _fetch_held_tickers,
 )
-from trading.domain import AggregateType, DomainEvent, EventType
+from trading.domain import AggregateType, DomainEvent, EventType, Position
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from trading.adapters.ports.broker import BrokerPort
     from trading.application.common.unit_of_work import UnitOfWork
     from trading.application.market_data.refresh_quotes import MarketDataPort
 
+_log = logging.getLogger(__name__)
+
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# Acted-on detection: a position/cash delta counts as "the user executed the
+# recommendation" when it lands within ±15% of the recommended amount. May
+# need tuning once real fills are observed.
+DETECTION_TOLERANCE = Decimal("0.15")
 
 _SYSTEM_PROMPT = (
     "You are the lead analyst writing a private, institutional-quality DAILY "
@@ -61,6 +76,18 @@ _SYSTEM_PROMPT = (
     "invent a trade.\n"
     "End with a line 'PUSH: ' then a 2-3 sentence phone-notification summary "
     "that leads with the action and teases the digest.\n"
+    "\n"
+    "After the 'Action of the Day' section you MUST also emit a machine-"
+    "readable block in EXACTLY this format (it is stripped before display):\n"
+    "<<<RECOMMENDATION>>>\n"
+    "verb: BUY|HOLD\n"
+    "symbol: <TICKER>          (omit for HOLD)\n"
+    "amount_usd: <number>      (omit for HOLD)\n"
+    "window: this-week|2-3-weeks|this-month|immediate\n"
+    "rationale: <one sentence>\n"
+    "supersedes: <YYYY-MM-DD>  (ONLY if pivoting from a prior active rec)\n"
+    "<<<END>>>\n"
+    "The block must match the Action of the Day exactly.\n"
     "\n"
     "HARD CONSTRAINTS — obey strictly:\n"
     "- The JOINT account is BROKER/ADVISOR-MANAGED. The owner CANNOT liquidate "
@@ -152,11 +179,20 @@ async def execute(
     openrouter_api_key: str = "",
     model: str = "anthropic/claude-opus-4.8",
     cash_to_deploy: str = "0",
+    broker: BrokerPort | None = None,
+    self_directed_account_id: str = "",
 ) -> DigestContent:
-    """Generate + persist the daily digest."""
+    """Generate + persist the daily digest (and its recommendation-ledger row)."""
     now = uow.clock.now()
     session = uow.session
     target_date = cmd.for_date or now.date()
+    digest_dt = datetime.combine(target_date, datetime.min.time(), tzinfo=UTC)
+
+    # Recommendation lifecycle (best-effort — never blocks the digest):
+    # 1. age out past-due recs, 2. detect acted-on via live Schwab deltas.
+    live_positions, live_cash = await _ledger_pre_digest(
+        session, broker, self_directed_account_id, now
+    )
 
     period_end = datetime.combine(target_date + timedelta(days=1), datetime.min.time(), tzinfo=UTC)
     period_start = period_end - timedelta(days=45)
@@ -181,6 +217,11 @@ async def execute(
         cash_to_deploy, individual, joint_managed,
     )
 
+    # 3. Feed prior advice back in — open/resolved recs + continuity rules.
+    continuity = await _build_continuity_context(session, digest_dt)
+    if continuity:
+        context = f"{context}\n{continuity}\n"
+
     generated_by = "template"
     summary = _template_digest(
         positions, total_sec, disclosures, overlaps, cash_to_deploy, joint_managed
@@ -193,7 +234,14 @@ async def execute(
             if md and len(md) > 200:  # reject empty / truncated responses
                 summary, push, generated_by = md, (excerpt or push), "openrouter"
         except Exception:  # noqa: BLE001 — never let the daily push die on the model
-            pass
+            _log.warning("digest model call failed — using template", exc_info=True)
+
+    # 5. Parse the machine-readable block, then strip it from what's displayed.
+    if generated_by == "openrouter":
+        parsed = _parse_recommendation_block(summary, digest_dt)
+        summary = _strip_recommendation_block(summary)
+    else:
+        parsed = _hold_fallback("frontier model unavailable — template digest", digest_dt)
 
     model_used = model if generated_by == "openrouter" else "template"
     digest_id = f"digest-{target_date.isoformat()}-{_short_id(now)}"
@@ -211,6 +259,17 @@ async def execute(
             body_blob_key=None,
             generated_at=now,
         )
+    )
+
+    # 6-7. Record the recommendation (with baseline snapshot) + any supersede.
+    await _record_recommendation(
+        session,
+        parsed,
+        digest_id=digest_id,
+        digest_dt=digest_dt,
+        now=now,
+        live_positions=live_positions,
+        live_cash=live_cash,
     )
 
     uow.collect(
@@ -247,6 +306,353 @@ def _short_id(now: datetime) -> str:
     """Deterministic 8-char suffix from the timestamp (no Math.random equiv. in
     the domain; uniqueness within a day is sufficient since the latest wins)."""
     return f"{int(now.timestamp()):08x}"[-8:]
+
+
+# --- Recommendation ledger ------------------------------------------------------
+
+_REC_PATTERN = re.compile(r"<<<RECOMMENDATION>>>\s*\n(.*?)\n?<<<END>>>", re.DOTALL)
+# Strip variant: also eats code fences the model may wrap the block in.
+_REC_STRIP_PATTERN = re.compile(
+    r"(?:```[a-z]*\s*\n)?<<<RECOMMENDATION>>>.*?<<<END>>>(?:\s*\n```)?", re.DOTALL
+)
+
+_WINDOW_DAYS = {
+    "immediate": 1,
+    "this-week": 7,
+    "2-3-weeks": 21,
+    "this-month": 30,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedRecommendation:
+    """The structured recommendation extracted from the digest LLM's output."""
+
+    verb: str  # BUY | HOLD
+    symbol: str | None
+    amount_usd: Decimal | None
+    window: str
+    due_date: datetime
+    rationale: str
+    supersedes_date: date | None
+
+
+def _hold_fallback(reason: str, digest_dt: datetime) -> ParsedRecommendation:
+    """Never lose the digest over a bad block — degrade to a HOLD record."""
+    return ParsedRecommendation(
+        verb="HOLD",
+        symbol=None,
+        amount_usd=None,
+        window="immediate",
+        due_date=digest_dt + timedelta(days=_WINDOW_DAYS["immediate"]),
+        rationale=f"parse failed: {reason}"[:500],
+        supersedes_date=None,
+    )
+
+
+def _parse_iso_date(raw: str | None) -> date | None:
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw.strip())
+    except ValueError:
+        return None
+
+
+def _parse_amount(raw: str | None) -> Decimal | None:
+    if not raw:
+        return None
+    try:
+        return Decimal(raw.replace("$", "").replace(",", "").strip())
+    except InvalidOperation:
+        return None
+
+
+def _parse_recommendation_block(text: str, digest_dt: datetime) -> ParsedRecommendation:
+    """Extract the structured recommendation. Falls back to HOLD on any error."""
+    m = _REC_PATTERN.search(text)
+    if not m:
+        return _hold_fallback("no recommendation block found", digest_dt)
+
+    fields: dict[str, str] = {}
+    for line in m.group(1).strip().splitlines():
+        if ":" in line:
+            key, _, val = line.partition(":")
+            fields[key.strip().lower()] = val.strip()
+
+    verb = fields.get("verb", "HOLD").upper()
+    if verb not in ("BUY", "HOLD"):
+        return _hold_fallback(f"unknown verb: {verb}", digest_dt)
+
+    window = fields.get("window", "immediate").lower()
+    if window not in _WINDOW_DAYS:
+        window = "immediate"
+
+    return ParsedRecommendation(
+        verb=verb,
+        symbol=(fields.get("symbol") or None) if verb == "BUY" else None,
+        amount_usd=_parse_amount(fields.get("amount_usd")) if verb == "BUY" else None,
+        window=window,
+        due_date=digest_dt + timedelta(days=_WINDOW_DAYS[window]),
+        rationale=fields.get("rationale", "")[:500],
+        supersedes_date=_parse_iso_date(fields.get("supersedes")),
+    )
+
+
+def _strip_recommendation_block(text: str) -> str:
+    """Remove the machine block from the human-readable markdown."""
+    return _REC_STRIP_PATTERN.sub("", text).rstrip()
+
+
+async def _expire_overdue(session: AsyncSession, now: datetime) -> int:
+    """Mark past-due active recommendations expired. Returns rows affected."""
+    overdue = (
+        await session.scalars(
+            select(RecommendationRow).where(
+                RecommendationRow.status == "active", RecommendationRow.due_date < now
+            )
+        )
+    ).all()
+    for rec in overdue:
+        rec.status = "expired"
+        rec.updated_at = now
+    return len(overdue)
+
+
+def _check_one(
+    rec: RecommendationRow,
+    positions_by_sym: dict[str, Position],
+    current_cash: Decimal,
+) -> tuple[bool, str]:
+    """Return (was_acted_on, human_readable_detail) for one active BUY rec."""
+    # Rule 1: the ticker's quantity grew by ~the target amount's worth.
+    if rec.symbol and rec.symbol in positions_by_sym:
+        pos = positions_by_sym[rec.symbol]
+        qty_delta = pos.quantity - (rec.baseline_qty or Decimal("0"))
+        avg_cost = pos.average_cost.amount
+        est_shares = (rec.amount_usd or Decimal("0")) / (avg_cost or Decimal("1"))
+        if qty_delta > 0 and est_shares > 0:
+            ratio = qty_delta / est_shares
+            if (Decimal("1") - DETECTION_TOLERANCE) <= ratio:
+                return True, (
+                    f"{rec.symbol} +{qty_delta.normalize():f} shares "
+                    f"(baseline {(rec.baseline_qty or Decimal('0')).normalize():f}, "
+                    f"est target {est_shares:.1f})"
+                )
+
+    # Rule 2: cash dropped by ~the target amount.
+    if rec.amount_usd and rec.baseline_cash is not None:
+        cash_delta = rec.baseline_cash - current_cash
+        if cash_delta > 0:
+            ratio = cash_delta / rec.amount_usd
+            low = Decimal("1") - DETECTION_TOLERANCE
+            high = Decimal("1") + DETECTION_TOLERANCE
+            if low <= ratio <= high:
+                return True, (
+                    f"cash −${cash_delta:,.2f} (target ${rec.amount_usd:,.2f})"
+                )
+
+    return False, ""
+
+
+async def _detect_acted_on(
+    session: AsyncSession,
+    positions_by_sym: dict[str, Position],
+    current_cash: Decimal,
+    now: datetime,
+) -> list[RecommendationRow]:
+    """Diff live positions/cash against baselines. Returns rows marked acted_on."""
+    active = (
+        await session.scalars(
+            select(RecommendationRow).where(
+                RecommendationRow.status == "active",
+                RecommendationRow.verb == "BUY",
+            )
+        )
+    ).all()
+
+    acted_on: list[RecommendationRow] = []
+    for rec in active:
+        triggered, detail = _check_one(rec, positions_by_sym, current_cash)
+        if triggered:
+            rec.status = "acted_on"
+            rec.acted_on_detail = detail
+            rec.updated_at = now
+            acted_on.append(rec)
+    return acted_on
+
+
+async def _fetch_live_self_directed(
+    broker: BrokerPort | None, account_id: str
+) -> tuple[dict[str, Position], Decimal | None]:
+    """Best-effort snapshot of the self-directed account: positions by ticker +
+    cash. Returns ({}, None) when the broker/account isn't available — detection
+    and baselines are skipped, never blocking the digest."""
+    if broker is None or not account_id:
+        return {}, None
+    try:
+        positions = {
+            p.symbol.ticker: p for p in await broker.get_positions(account_id)
+        }
+        account = await broker.get_account(account_id)
+    except Exception:  # noqa: BLE001 — detection is best-effort by design
+        _log.warning("recommendation detection: broker snapshot failed", exc_info=True)
+        return {}, None
+    return positions, account.cash.amount
+
+
+async def _ledger_pre_digest(
+    session: AsyncSession,
+    broker: BrokerPort | None,
+    self_directed_account_id: str,
+    now: datetime,
+) -> tuple[dict[str, Position], Decimal | None]:
+    """Lifecycle steps 1-2: expire past-due recs, detect acted-on via live
+    Schwab deltas. Returns the live snapshot for baseline capture later."""
+    expired_count = await _expire_overdue(session, now)
+    if expired_count:
+        _log.info("recommendations expired: %d", expired_count)
+    live_positions, live_cash = await _fetch_live_self_directed(
+        broker, self_directed_account_id
+    )
+    if live_cash is not None:
+        acted = await _detect_acted_on(session, live_positions, live_cash, now)
+        for rec in acted:
+            _log.info(
+                "recommendation acted on: %s — %s", rec.recommendation_id, rec.acted_on_detail
+            )
+    return live_positions, live_cash
+
+
+_CONTINUITY_RULES = """
+CONTINUITY RULES:
+- If today continues an open rec, say so and reference the date.
+- If today CHANGES/CANCELS an open rec, you MUST emit `supersedes: <YYYY-MM-DD>` \
+and explain the pivot. The old rec will be marked superseded.
+- Don't re-issue a fresh amount for a ticker with an active rec unless pivoting.
+- Respect the windows you set. "2-3 weeks" can't silently become "this week" — \
+that's a pivot, call it out."""
+
+
+async def _build_continuity_context(session: AsyncSession, today: datetime) -> str:
+    """Build the OPEN RECOMMENDATIONS / RECENTLY RESOLVED context block."""
+    active = (
+        await session.scalars(
+            select(RecommendationRow)
+            .where(RecommendationRow.status == "active")
+            .order_by(RecommendationRow.digest_date.desc())
+            .limit(10)  # cap prompt growth; oldest trimmed
+        )
+    ).all()
+
+    recent = (
+        await session.scalars(
+            select(RecommendationRow)
+            .where(
+                RecommendationRow.status.in_(["acted_on", "expired", "superseded"]),
+                RecommendationRow.digest_date >= today - timedelta(days=7),
+            )
+            .order_by(RecommendationRow.digest_date.desc())
+        )
+    ).all()
+
+    lines: list[str] = []
+    if active:
+        lines.append(
+            "OPEN RECOMMENDATIONS (you issued these on prior days — still pending):"
+        )
+        for r in active:
+            amt = f"${r.amount_usd:,.0f} " if r.amount_usd else ""
+            lines.append(
+                f"- [{r.digest_date.date()}] {r.verb} {r.symbol or ''} {amt}"
+                f"by {r.due_date.date()} ({r.window}) — {r.rationale}"
+            )
+    if recent:
+        lines.append("\nRECENTLY RESOLVED (last 7 days):")
+        for r in recent:
+            lines.append(
+                f"- [{r.digest_date.date()}] {r.verb} {r.symbol or ''} → "
+                f"{r.status}: {r.acted_on_detail or ''}"
+            )
+    if not lines:
+        return ""  # no continuity context needed
+
+    lines.append(_CONTINUITY_RULES)
+    return "\n".join(lines)
+
+
+async def _mark_superseded(
+    session: AsyncSession,
+    supersedes_date: date,
+    new_rec_id: str,
+    new_symbol: str | None,
+    now: datetime,
+) -> None:
+    """Mark the active rec issued on `supersedes_date` as superseded by the new
+    rec. Prefers a symbol match when several recs share the date."""
+    day_start = datetime.combine(supersedes_date, datetime.min.time(), tzinfo=UTC)
+    day_end = day_start + timedelta(days=1)
+    candidates = (
+        await session.scalars(
+            select(RecommendationRow).where(
+                RecommendationRow.status == "active",
+                RecommendationRow.digest_date >= day_start,
+                RecommendationRow.digest_date < day_end,
+            )
+        )
+    ).all()
+    if not candidates:
+        return
+    match = next(
+        (c for c in candidates if new_symbol and c.symbol == new_symbol), candidates[0]
+    )
+    match.status = "superseded"
+    match.superseded_by = new_rec_id
+    match.updated_at = now
+
+
+async def _record_recommendation(
+    session: AsyncSession,
+    parsed: ParsedRecommendation,
+    *,
+    digest_id: str,
+    digest_dt: datetime,
+    now: datetime,
+    live_positions: dict[str, Position],
+    live_cash: Decimal | None,
+) -> str:
+    """Lifecycle steps 6-7: insert the new rec with its baseline snapshot
+    (issue-time qty of the recommended ticker + cash, so the next run's
+    detector has a reference point), then apply any supersede."""
+    rec_id = f"rec-{digest_dt.date().isoformat()}-{_short_id(now)}"
+    baseline_qty: Decimal | None = None
+    if parsed.symbol and parsed.symbol in live_positions:
+        baseline_qty = live_positions[parsed.symbol].quantity
+    elif parsed.symbol and live_cash is not None:
+        baseline_qty = Decimal("0")  # account is live but doesn't hold it yet
+    session.add(
+        RecommendationRow(
+            recommendation_id=rec_id,
+            digest_id=digest_id,
+            digest_date=digest_dt,
+            verb=parsed.verb,
+            symbol=parsed.symbol,
+            amount_usd=parsed.amount_usd,
+            window=parsed.window,
+            due_date=parsed.due_date,
+            rationale=parsed.rationale,
+            status="active",
+            baseline_qty=baseline_qty,
+            baseline_cash=live_cash,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    # A pivot supersedes the prior active rec — never silently.
+    if parsed.supersedes_date is not None:
+        await _mark_superseded(session, parsed.supersedes_date, rec_id, parsed.symbol, now)
+    return rec_id
 
 
 # --- Data ---------------------------------------------------------------------

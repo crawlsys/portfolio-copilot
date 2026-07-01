@@ -242,6 +242,50 @@ class DigestRow(Base):
     )
 
 
+class RecommendationRow(Base):
+    """One structured recommendation per digest run — the digest LLM's ledger.
+
+    Lifecycle: active → acted_on (Schwab delta detected) | expired (past
+    due_date) | superseded (LLM pivoted via `supersedes:`). The baseline
+    snapshot (qty/cash at issue time) is what the acted-on detector diffs
+    against; the positions table only holds current state.
+    """
+
+    __tablename__ = "recommendations"
+    __table_args__ = (
+        Index("ix_recommendations_status_date", "status", "digest_date"),
+        Index("ix_recommendations_symbol", "symbol"),
+    )
+
+    recommendation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    digest_id: Mapped[str] = mapped_column(String(64), nullable=False)  # → digests.digest_id
+    digest_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    # The recommendation itself
+    verb: Mapped[str] = mapped_column(String(16), nullable=False)  # BUY | HOLD
+    symbol: Mapped[str | None] = mapped_column(String(32))  # null for HOLD
+    amount_usd: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    window: Mapped[str] = mapped_column(String(16), nullable=False)  # this-week|2-3-weeks|...
+    due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Lifecycle: active | acted_on | expired | superseded
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    superseded_by: Mapped[str | None] = mapped_column(String(64))  # → recommendations
+    acted_on_detail: Mapped[str | None] = mapped_column(Text)  # what the detector saw
+
+    # Baseline snapshot for detection (captured at issue time)
+    baseline_qty: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    baseline_cash: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
 # --- Audit -------------------------------------------------------------------
 
 

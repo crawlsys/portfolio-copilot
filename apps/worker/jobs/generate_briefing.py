@@ -160,8 +160,8 @@ def _render_table_block(header_row: str, data_rows: list[str]) -> str:
     """
     header_cells = _parse_cells(header_row)
     col_map: dict[str, int] = {}
-    for idx, cell in enumerate(header_cells):
-        low = cell.lower()
+    for idx, header_cell in enumerate(header_cells):
+        low = header_cell.lower()
         for key, aliases in _HEADER_ALIASES.items():
             if key in col_map:
                 continue

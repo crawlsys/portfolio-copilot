@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from apps.common.settings import get_settings
+from trading.adapters.ports.broker import BrokerPort
 from trading.application.common.clock import SystemClock
 from trading.application.common.unit_of_work import UnitOfWork
 from trading.application.market_data.refresh_quotes import MarketDataPort, NoMarketData
@@ -38,6 +39,20 @@ async def run_digest() -> None:
 
             market_data = MassiveClient(api_key=settings.massive_api_key)
 
+        # Live broker for the recommendation ledger's acted-on detection.
+        # Only wired when Schwab is configured — the FakeBroker's seeded data
+        # would produce bogus deltas. None → detection is skipped (best-effort).
+        broker: BrokerPort | None = None
+        if settings.broker_mode == "schwab" and settings.schwab_client_id:
+            from trading.adapters.schwab.broker import SchwabBrokerAdapter  # noqa: PLC0415
+
+            broker = SchwabBrokerAdapter(
+                client_id=settings.schwab_client_id,
+                client_secret=settings.schwab_client_secret,
+                redirect_uri=settings.schwab_redirect_uri,
+                token_path=settings.schwab_token_path,
+            )
+
         async with AsyncSession(engine, expire_on_commit=False) as session:
             uow = UnitOfWork(session=session, clock=SystemClock(), correlation_id=uuid4())
             async with uow:
@@ -48,6 +63,8 @@ async def run_digest() -> None:
                     openrouter_api_key=settings.openrouter_api_key,
                     model=settings.digest_model,
                     cash_to_deploy=settings.digest_cash_to_deploy,
+                    broker=broker,
+                    self_directed_account_id=settings.self_directed_account_id,
                 )
 
         _log.info(

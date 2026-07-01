@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Recommendation ledger**: the daily digest LLM now has memory of its own
+  prior advice (`recommendations` table, migration `0003_recommendations`).
+  Each digest run: expires past-due recs, auto-detects acted-on BUYs by
+  diffing live Schwab positions/cash against issue-time baselines (±15%
+  tolerance), feeds open/resolved recs back into the prompt with continuity
+  rules, and extracts a structured `<<<RECOMMENDATION>>>` block from the
+  model output (stripped before display; malformed block → HOLD fallback,
+  the digest is never lost). Pivots must be explicit via `supersedes:` —
+  the prior rec is marked `superseded` and linked. New setting:
+  `SELF_DIRECTED_ACCOUNT_ID` (empty → detection skipped, best-effort).
 - **Digest chat** — an interactive, context-aware chatbot on the `/digest` page.
   Streams (SSE) answers from a model that sees the same context the daily digest
   is built from (portfolio, holdings, congressional signal, market regime) plus
@@ -22,6 +32,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
   latency (`web/src/app/healthz/route.ts`).
 
 ### Fixed
+- **mypy cleanup**: `generate_briefing._render_table_block` shadowed a loop
+  variable with its `cell()` helper (8 spurious errors); the digest's
+  swallowed model-call failure now logs a warning instead of `pass`.
 - **API pod missing the self-directed ledger mount**: the `tracker-holdings`
   ConfigMap was mounted into the API deployment with only `holdings.json` (joint
   book), not `holdings-individual.json`. The digest CronJob mounts both, so
