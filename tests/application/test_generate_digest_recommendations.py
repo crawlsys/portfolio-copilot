@@ -201,6 +201,15 @@ def test_check_one_quantity_tolerance_boundary() -> None:
     assert Decimal("0.15") == DETECTION_TOLERANCE
 
 
+def test_check_one_null_baseline_qty_never_reads_preexisting_holding_as_fill() -> None:
+    # Rec issued without a broker snapshot (baseline_qty NULL): a pre-existing
+    # 190-share position must NOT be mistaken for a +190 fill on the next run.
+    rec = _rec()
+    rec.baseline_qty = None
+    triggered, _ = _check_one(rec, {"VTI": _pos("VTI", "190", "366")}, Decimal("100000"))
+    assert not triggered
+
+
 def test_check_one_cash_drop_beyond_upper_tolerance_does_not_trigger() -> None:
     # Cash dropped 40% more than target — likely something else; don't claim it.
     rec = _rec()

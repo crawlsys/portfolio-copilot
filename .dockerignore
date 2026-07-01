@@ -16,3 +16,9 @@ build
 dist
 .env
 .env.*
+
+# Real ledger data never ships in the image — mounted via ConfigMap at runtime
+data/holdings*.json
+!data/holdings.example.json
+data/*transactions*
+data/*Order_Status*

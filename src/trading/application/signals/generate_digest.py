@@ -426,9 +426,11 @@ def _check_one(
 ) -> tuple[bool, str]:
     """Return (was_acted_on, human_readable_detail) for one active BUY rec."""
     # Rule 1: the ticker's quantity grew by ~the target amount's worth.
-    if rec.symbol and rec.symbol in positions_by_sym:
+    # A None baseline means no snapshot was captured at issue time — there is
+    # no delta to compute; a pre-existing holding must NOT read as a fill.
+    if rec.symbol and rec.baseline_qty is not None and rec.symbol in positions_by_sym:
         pos = positions_by_sym[rec.symbol]
-        qty_delta = pos.quantity - (rec.baseline_qty or Decimal("0"))
+        qty_delta = pos.quantity - rec.baseline_qty
         avg_cost = pos.average_cost.amount
         est_shares = (rec.amount_usd or Decimal("0")) / (avg_cost or Decimal("1"))
         if qty_delta > 0 and est_shares > 0:
@@ -436,7 +438,7 @@ def _check_one(
             if (Decimal("1") - DETECTION_TOLERANCE) <= ratio:
                 return True, (
                     f"{rec.symbol} +{qty_delta.normalize():f} shares "
-                    f"(baseline {(rec.baseline_qty or Decimal('0')).normalize():f}, "
+                    f"(baseline {rec.baseline_qty.normalize():f}, "
                     f"est target {est_shares:.1f})"
                 )
 

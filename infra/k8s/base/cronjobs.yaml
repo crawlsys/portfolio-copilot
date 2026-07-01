@@ -39,6 +39,11 @@ spec:
             - name: holdings
               configMap:
                 name: tracker-holdings
+            # Live broker access: the recommendation ledger's acted-on
+            # detection + baseline capture reads Schwab in the digest run.
+            - name: schwab-token
+              secret:
+                secretName: tracker-schwab-token
           containers:
             - name: job
               image: harbor.example.com/tracker/tracker-backend:latest
@@ -52,6 +57,9 @@ spec:
                 - name: holdings
                   mountPath: /app/data/holdings-individual.json
                   subPath: holdings-individual.json
+                  readOnly: true
+                - name: schwab-token
+                  mountPath: /etc/schwab
                   readOnly: true
               envFrom:
                 - secretRef:
@@ -196,6 +204,11 @@ spec:
             - name: holdings
               configMap:
                 name: tracker-holdings
+            # The canary's whole job is a read-only Schwab call — it needs
+            # the token file or it fails before it can measure anything.
+            - name: schwab-token
+              secret:
+                secretName: tracker-schwab-token
           containers:
             - name: job
               image: harbor.example.com/tracker/tracker-backend:latest
@@ -205,6 +218,9 @@ spec:
                 - name: holdings
                   mountPath: /app/data/holdings.json
                   subPath: holdings.json
+                  readOnly: true
+                - name: schwab-token
+                  mountPath: /etc/schwab
                   readOnly: true
               envFrom:
                 - secretRef:
