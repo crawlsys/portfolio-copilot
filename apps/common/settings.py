@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     llm_api_key: str = Field(default="")
     llm_model: str = Field(default="")
 
+    # Advisor council (persona analysts over point-in-time fundamentals).
+    # Routes through the litellm gateway with llm_api_key; the alias decides
+    # the upstream (advisor-frontier → Anthropic, swappable to local).
+    advisor_model: str = Field(default="advisor-frontier")
+    litellm_base_url: str = Field(default="http://127.0.0.1:30400")
+
     # Notifications
     push_provider: str = Field(default="")
     ntfy_server_url: str = Field(default="https://ntfy.sh")

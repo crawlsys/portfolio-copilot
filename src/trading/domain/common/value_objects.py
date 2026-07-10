@@ -74,6 +74,8 @@ class SignalKind(Enum):
     PORTFOLIO_DRIFT = auto()
     EARNINGS = auto()
     MANUAL = auto()
+    # A persona advisor's fundamentals-driven view (the advisor council).
+    ADVISOR_VIEW = auto()
 
 
 class Horizon(Enum):
@@ -181,7 +183,7 @@ _EQUITY_RE = re.compile(r"^[A-Z]{1,6}([.\-][A-Z]{1,4})?$")
 _OPTION_RE = re.compile(r"^[A-Z]{1,6}\d{6}[CP]\d{8}$")
 
 
-def coerce_symbol(ticker: str) -> "Symbol":
+def coerce_symbol(ticker: str) -> Symbol:
     """Rebuild a Symbol from a stored/loaded ticker without dropping non-equity
     instruments. Equity tickers validate normally; anything that isn't a valid
     equity ticker (CUSIP-identified treasuries, etc.) is accepted under

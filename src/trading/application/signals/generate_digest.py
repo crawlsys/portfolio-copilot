@@ -25,6 +25,7 @@ import httpx
 from sqlalchemy import select
 
 from trading.adapters.persistence.models import (
+    AdvisorViewRow,
     DigestRow,
     PositionRow,
     RecommendationRow,
@@ -221,6 +222,11 @@ async def execute(
     continuity = await _build_continuity_context(session, digest_dt)
     if continuity:
         context = f"{context}\n{continuity}\n"
+
+    # 4. Advisor council — persona analysts' latest views on held tickers.
+    advisor_block = await _build_advisor_context(session)
+    if advisor_block:
+        context = f"{context}\n{advisor_block}\n"
 
     generated_by = "template"
     summary = _template_digest(
@@ -534,6 +540,34 @@ and explain the pivot. The old rec will be marked superseded.
 - Don't re-issue a fresh amount for a ticker with an active rec unless pivoting.
 - Respect the windows you set. "2-3 weeks" can't silently become "this week" — \
 that's a pivot, call it out."""
+
+
+async def _build_advisor_context(session: AsyncSession) -> str:
+    """The advisor council block: latest non-abstained view per (ticker,
+    advisor). Empty string when no views exist (feature not yet running)."""
+    result = await session.execute(
+        select(AdvisorViewRow)
+        .where(AdvisorViewRow.abstained.is_(False))
+        .order_by(AdvisorViewRow.created_at.desc())
+    )
+    latest: dict[tuple[str, str], AdvisorViewRow] = {}
+    for row in result.scalars().all():
+        latest.setdefault((row.ticker, row.advisor), row)
+    if not latest:
+        return ""
+
+    lines = [
+        f"| {row.ticker} | {row.advisor} | {row.stance} | {row.confidence:.0f} "
+        f"| {row.as_of.date().isoformat()} | {row.reasoning} |"
+        for (_t, _a), row in sorted(latest.items())
+    ]
+    return (
+        "ADVISOR COUNCIL (persona analysts reasoning ONLY over point-in-time "
+        "fundamentals — no news, no congressional data; treat as one independent "
+        "input, not gospel):\n"
+        "| Ticker | Advisor | Stance | Conf (0-100) | As of | Thesis |\n"
+        "|---|---|---|---|---|---|\n" + "\n".join(lines)
+    )
 
 
 async def _build_continuity_context(session: AsyncSession, today: datetime) -> str:

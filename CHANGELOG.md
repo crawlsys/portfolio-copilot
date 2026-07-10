@@ -6,6 +6,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Advisor council** (adopted from virattt/ai-hedge-fund v2, MIT): persona
+  LLM analysts form point-in-time views over fundamentals snapshots.
+  - `trading.application.advisors`: `FundamentalsSnapshot` (filing-date-
+    filtered history + derived aggregates, `content_hash` cache key),
+    `AdvisorAgent` base with the v2 failure contract (data errors propagate;
+    LLM/parse failures abstain), `BuffettAdvisor` persona (prompt ported
+    verbatim), OpenAI-compatible litellm transport (`ADVISOR_MODEL`, default
+    `advisor-frontier` alias; `LITELLM_BASE_URL`).
+  - Massive fundamentals adapter: income/balance/cash-flow statement
+    endpoints (`stocks/financials/v1/*`, requires the "Financials & Ratios
+    Expansion" entitlement), point-in-time on `filing_date.lte`, per-period
+    ratios computed from statements, market cap / P-E priced at the daily
+    close on each filing date.
+  - `advisor_views` table (migration `0004_advisor_views`) — cache + audit
+    trail: unique (advisor, model, snapshot_hash) so an unchanged snapshot
+    never re-pays the LLM; every view stores its exact prompts + raw response.
+  - `advisor_views` CronJob (6:30 AM ET, before the digest); the daily digest
+    and digest chat contexts gain an "Advisor Council" block; MCP gains
+    read-only `list_advisors` / `get_advisor_views` tools.
+  - Domain: `SignalKind.ADVISOR_VIEW` + `AdvisorView.to_signal()` projection.
 - **Recommendation ledger**: the daily digest LLM now has memory of its own
   prior advice (`recommendations` table, migration `0003_recommendations`).
   Each digest run: expires past-due recs, auto-detects acted-on BUYs by

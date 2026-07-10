@@ -19,6 +19,7 @@ def test_jobs_cover_every_scheduled_job() -> None:
         "token_canary",
         "pipeline_health",
         "vix_alert",
+        "advisor_views",
     }
 
 

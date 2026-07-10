@@ -36,6 +36,7 @@ from trading.application.signals.generate_briefing import (
 )
 from trading.application.signals.generate_digest import (
     OPENROUTER_URL,
+    _build_advisor_context,
     _build_context,
     _fetch_positions,
     _load_account_file,
@@ -152,6 +153,7 @@ async def _assemble_context(request: Request, digest_date: str | None) -> str:
             .scalars()
             .all()
         )
+        advisor_block = await _build_advisor_context(session)
 
     regime = await _assess_market_regime(comp.market_data)
 
@@ -181,6 +183,8 @@ async def _assemble_context(request: Request, digest_date: str | None) -> str:
             break
 
     history = "\n\n".join(blocks) if blocks else "No prior digests on record."
+    if advisor_block:
+        base = f"{base}\n{advisor_block}\n"
     return f"{base}\n\nRECENT DAILY DIGESTS (newest first):\n\n{history}"
 
 

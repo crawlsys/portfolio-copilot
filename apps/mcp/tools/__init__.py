@@ -21,10 +21,10 @@ from __future__ import annotations
 from mcp.types import TextContent, Tool
 
 from apps.common.composition import Composition
-from apps.mcp.tools import briefing, congressional, market, portfolio
+from apps.mcp.tools import advisors, briefing, congressional, market, portfolio
 from mcp.server import Server
 
-_MODULES = (portfolio, congressional, market, briefing)
+_MODULES = (portfolio, congressional, market, briefing, advisors)
 
 
 def all_tools() -> list[Tool]:

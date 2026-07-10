@@ -15,7 +15,7 @@ import mcp.types as types
 import pytest
 from apps.common.composition import make_composition
 from apps.mcp.server import create_server
-from apps.mcp.tools import all_tools, briefing, congressional, dispatch, market, portfolio
+from apps.mcp.tools import advisors, all_tools, briefing, congressional, dispatch, market, portfolio
 
 from trading.adapters.fake.broker import FakeBroker
 from trading.domain import Money, Symbol
@@ -34,7 +34,7 @@ FORBIDDEN_TOOL_VERBS = frozenset(
     }
 )
 
-ALL_MODULES = (portfolio, congressional, market, briefing)
+ALL_MODULES = (portfolio, congressional, market, briefing, advisors)
 
 
 def _make_fake_broker() -> FakeBroker:

@@ -55,6 +55,12 @@ def _vix_alert() -> None:
     run_vix_check_sync()
 
 
+def _advisor_views() -> None:
+    from apps.worker.jobs.advisor_views_job import run_advisor_views_sync
+
+    run_advisor_views_sync()
+
+
 # job_id -> runner. job_ids match the APScheduler job ids they replace.
 JOBS: dict[str, Callable[[], None]] = {
     "daily_briefing": _briefing,
@@ -63,6 +69,7 @@ JOBS: dict[str, Callable[[], None]] = {
     "token_canary": _token_canary,
     "pipeline_health": _pipeline_health,
     "vix_alert": _vix_alert,
+    "advisor_views": _advisor_views,
 }
 
 

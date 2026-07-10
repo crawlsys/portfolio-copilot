@@ -381,6 +381,49 @@ class EventLogRow(Base):
     envelope: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
 
 
+class AdvisorViewRow(Base):
+    """One persona advisor's point-in-time view on a ticker.
+
+    Deliberately three things at once (design carried from ai-hedge-fund v2):
+    1. cache — unique (advisor, model, snapshot_hash) means an unchanged
+       fundamentals snapshot never pays for a second LLM call;
+    2. persistence — the EXACT system/user prompt and raw response behind
+       every view, for replay and audit;
+    3. debug trail — failed parses keep the raw response with abstained=True.
+    """
+
+    __tablename__ = "advisor_views"
+    __table_args__ = (
+        UniqueConstraint(
+            "advisor", "model", "snapshot_hash", name="uq_advisor_views_cache_key"
+        ),
+        Index("ix_advisor_views_ticker_asof", "ticker", "as_of"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    advisor: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g. "buffett"
+    model: Mapped[str] = mapped_column(String(128), nullable=False)  # LLM model id
+    ticker: Mapped[str] = mapped_column(String(32), nullable=False)
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # The view
+    stance: Mapped[str] = mapped_column(String(16), nullable=False)  # bullish|neutral|bearish
+    confidence: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)  # 0-100
+    reasoning: Mapped[str] = mapped_column(Text, nullable=False)
+    abstained: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    abstain_reason: Mapped[str | None] = mapped_column(Text)
+
+    # Audit trail — exact prompts and raw model output
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    user_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    raw_response: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
 class ConsumerOffsetRow(Base):
     """Per-consumer dedup tracking — at-least-once delivery needs idempotent consumers."""
 

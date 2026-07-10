@@ -15,7 +15,7 @@ from collections.abc import Callable
 from typing import get_type_hints
 
 import pytest
-from apps.mcp.tools import briefing, congressional, market, portfolio
+from apps.mcp.tools import advisors, briefing, congressional, market, portfolio
 from mcp.types import Tool
 
 FORBIDDEN_PARAM_NAMES = frozenset(
@@ -31,8 +31,8 @@ FORBIDDEN_PARAM_NAMES = frozenset(
     }
 )
 
-ALL_MODULES = [portfolio, congressional, market, briefing]
-MODULE_IDS = ["portfolio", "congressional", "market", "briefing"]
+ALL_MODULES = [portfolio, congressional, market, briefing, advisors]
+MODULE_IDS = ["portfolio", "congressional", "market", "briefing", "advisors"]
 
 
 def _get_conversion_functions(module: object) -> list[tuple[str, Callable]]:

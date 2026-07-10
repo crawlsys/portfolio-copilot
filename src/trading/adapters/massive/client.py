@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Self, cast
 from urllib.parse import parse_qsl, urlparse
@@ -16,6 +16,17 @@ from trading.adapters.massive.exceptions import (
     MassiveError,
     MassiveRateLimitError,
 )
+from trading.adapters.massive.fundamentals import (
+    YOY_OFFSET,
+    BalanceSheet,
+    CashFlowStatement,
+    IncomeStatement,
+    build_price_lookup,
+    merge_fundamentals,
+    parse_balance_sheets,
+    parse_cash_flow_statements,
+    parse_income_statements,
+)
 from trading.adapters.massive.parsing import (
     JsonObject,
     parse_bars,
@@ -24,6 +35,7 @@ from trading.adapters.massive.parsing import (
     parse_ticker_results,
     timeframe_to_massive,
 )
+from trading.application.advisors.snapshot import PeriodFundamentals
 from trading.domain import Bar, Quote, Symbol
 
 DEFAULT_BASE_URL = "https://api.massive.com"
@@ -194,6 +206,88 @@ class MassiveClient:
         if isinstance(first, dict):
             return Decimal(str(first.get("c", 0)))
         return Decimal("0")
+
+    # ------------------------------------------------------------------
+    # Fundamentals (Financials & Ratios Expansion entitlement)
+    # ------------------------------------------------------------------
+
+    async def get_income_statements(
+        self, ticker: str, filing_date_lte: date, timeframe: str = "trailing_twelve_months", limit: int = 40
+    ) -> list[IncomeStatement]:
+        """TTM income statements provably public by *filing_date_lte*."""
+        payload = await self._get(
+            "/stocks/financials/v1/income-statements",
+            params=self._fundamentals_params(ticker, filing_date_lte, timeframe, limit),
+        )
+        return parse_income_statements(payload)
+
+    async def get_balance_sheets(
+        self, ticker: str, filing_date_lte: date, limit: int = 40
+    ) -> list[BalanceSheet]:
+        """Quarterly balance sheets provably public by *filing_date_lte*.
+
+        Balance sheets are point-in-time statements — there is no TTM variant.
+        """
+        payload = await self._get(
+            "/stocks/financials/v1/balance-sheets",
+            params=self._fundamentals_params(ticker, filing_date_lte, "quarterly", limit),
+        )
+        return parse_balance_sheets(payload)
+
+    async def get_cash_flow_statements(
+        self, ticker: str, filing_date_lte: date, timeframe: str = "trailing_twelve_months", limit: int = 40
+    ) -> list[CashFlowStatement]:
+        """TTM cash flow statements provably public by *filing_date_lte*."""
+        payload = await self._get(
+            "/stocks/financials/v1/cash-flow-statements",
+            params=self._fundamentals_params(ticker, filing_date_lte, timeframe, limit),
+        )
+        return parse_cash_flow_statements(payload)
+
+    async def get_fundamentals_history(
+        self, ticker: str, as_of: date, limit: int = 20
+    ) -> list[PeriodFundamentals]:
+        """FundamentalsPort implementation: merged per-period metrics.
+
+        Point-in-time on filing_date; market cap / P-E priced at the daily
+        close on (or last session before) each filing date. Price gaps fail
+        soft — the affected period just renders without valuation fields.
+        """
+        incomes, balances, cashflows = await asyncio.gather(
+            self.get_income_statements(ticker, as_of, limit=limit + YOY_OFFSET),
+            self.get_balance_sheets(ticker, as_of, limit=limit),
+            self.get_cash_flow_statements(ticker, as_of, limit=limit),
+        )
+        if not incomes:
+            return []
+
+        filing_dates = [inc.filing_date for inc in incomes if inc.filing_date is not None]
+        price_lookup: dict[date, float] = {}
+        if filing_dates:
+            start = datetime.combine(min(filing_dates), time(0), tzinfo=UTC) - timedelta(days=10)
+            end = datetime.combine(max(filing_dates), time(23, 59), tzinfo=UTC)
+            try:
+                bars = await self.get_bars(Symbol(ticker), "1d", start, end)
+                closes = {bar.closed_at.date(): float(bar.close) for bar in bars}
+                price_lookup = build_price_lookup(filing_dates, closes)
+            except MassiveError:
+                # Valuation columns degrade to '-'; fundamentals still flow.
+                price_lookup = {}
+
+        merged = merge_fundamentals(incomes, balances, cashflows, price_lookup)
+        return merged[:limit]
+
+    @staticmethod
+    def _fundamentals_params(
+        ticker: str, filing_date_lte: date, timeframe: str, limit: int
+    ) -> dict[str, str]:
+        return {
+            "tickers": ticker,
+            "filing_date.lte": filing_date_lte.isoformat(),
+            "timeframe": timeframe,
+            "sort": "period_end.desc",
+            "limit": str(limit),
+        }
 
     def websocket_stub(self) -> str:
         """Return the planned stock WebSocket URL; streaming is not implemented yet."""
