@@ -30,8 +30,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - **Web `/healthz` probe endpoint**: lightweight route returning 200 without
   calling the backend API, so pod readiness/liveness is decoupled from upstream
   latency (`web/src/app/healthz/route.ts`).
+- **MCP streamable-HTTP transport + in-cluster Deployment**: the transport the
+  server docstring always promised. `MCP_TRANSPORT=http` serves streamable HTTP
+  on `MCP_PORT` (default 8765) at `/mcp`; new `infra/k8s/base/mcp.yaml`
+  (Deployment + ClusterIP Service, deliberately no Ingress — the MCP protocol
+  carries no auth and the tools serve live brokerage data). The MCP composition
+  is now wired from `apps.common.settings` like the API/worker, so the pod sees
+  the real broker/DB/market-data instead of raw-env `fake`/empty defaults.
 
 ### Fixed
+- **MCP tools invisible to agents (handler overwrite)**: each tool module
+  registered its own `@server.list_tools()`/`@server.call_tool()` on the shared
+  low-level `Server`, which keeps ONE handler per request type — the
+  last-registered module (briefing) silently replaced the rest, so connected
+  agents saw only briefing tools and could not answer portfolio questions.
+  Tool modules now expose passive `TOOLS` + `handle()` and
+  `apps/mcp/tools/__init__.py` owns a single aggregated registration; a
+  regression test asserts one live ListTools request serves every module.
+- **`make ci-clean` was broken twice over**: it passed `--disable-socket`
+  (pytest-socket is not a dependency; the conftest env-var blocker is the real
+  mechanism) and it inherited the Makefile's `.env`/dev-default `DATABASE_URL`,
+  un-skipping DB-backed tests that then fail on any machine without a local
+  Postgres. The target now clears `DATABASE_URL` and drops the flag, matching
+  CI's bare-pytest behavior.
 - **mypy cleanup**: `generate_briefing._render_table_block` shadowed a loop
   variable with its `cell()` helper (8 spurious errors); the digest's
   swallowed model-call failure now logs a warning instead of `pass`.

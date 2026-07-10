@@ -2,6 +2,9 @@
 
 Briefings are retrieved from the database via the persistence layer.
 For now, returns empty results when no DB is configured (test mode).
+
+Module contract (see apps/mcp/tools/__init__.py): expose ``TOOLS`` and
+``handle()``; never register handlers on the Server directly.
 """
 
 from __future__ import annotations
@@ -13,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.common.composition import Composition
-from mcp.server import Server
 from trading.adapters.persistence.models import BriefingRow
 from trading.domain import Briefing, BriefingId, SignalId
 
@@ -47,80 +49,79 @@ def _briefing_to_dict(b: Briefing) -> dict[str, object]:
     }
 
 
-def register_briefing_tools(server: Server) -> None:
-    """Register briefing read-only tools."""
+TOOLS: list[Tool] = [
+    Tool(
+        name="get_latest_briefing",
+        description="Get the most recent daily AI briefing.",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_briefings",
+        description="Get briefing history since a specific date.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "since": {
+                    "type": "string",
+                    "description": "ISO date string (YYYY-MM-DD) to fetch briefings since.",
+                },
+            },
+            "required": ["since"],
+        },
+    ),
+]
 
-    @server.list_tools()
-    async def list_briefing_tools() -> list[Tool]:
+_TOOL_NAMES = frozenset(t.name for t in TOOLS)
+
+
+async def handle(
+    name: str, arguments: dict[str, object], comp: Composition
+) -> list[TextContent] | None:
+    """Handle a briefing tool call; None if *name* is not ours."""
+    if name not in _TOOL_NAMES:
+        return None
+
+    if comp.engine is None:
         return [
-            Tool(
-                name="get_latest_briefing",
-                description="Get the most recent daily AI briefing.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {},
-                    "required": [],
-                },
-            ),
-            Tool(
-                name="get_briefings",
-                description="Get briefing history since a specific date.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "since": {
-                            "type": "string",
-                            "description": "ISO date string (YYYY-MM-DD) to fetch briefings since.",
-                        },
-                    },
-                    "required": ["since"],
-                },
-            ),
+            TextContent(
+                type="text",
+                text=str({"error": "Database not configured. No briefings available."}),
+            )
         ]
 
-    @server.call_tool()
-    async def call_briefing_tool(name: str, arguments: dict[str, object]) -> list[TextContent]:
-        comp: Composition = server.state  # type: ignore[attr-defined]
+    if name == "get_latest_briefing":
+        async with AsyncSession(comp.engine, expire_on_commit=False) as session:
+            stmt = select(BriefingRow).order_by(BriefingRow.briefing_date.desc()).limit(1)
+            query_result = await session.execute(stmt)
+            row = query_result.scalar_one_or_none()
+            if row is None:
+                return [TextContent(type="text", text=str({"briefing": None}))]
+            briefing = _row_to_briefing(row)
+            return [TextContent(type="text", text=str(_briefing_to_dict(briefing)))]
 
-        if comp.engine is None:
-            return [
-                TextContent(
-                    type="text",
-                    text=str({"error": "Database not configured. No briefings available."}),
-                )
-            ]
+    # get_briefings
+    since_str = str(arguments.get("since", ""))
+    try:
+        since_date = datetime.fromisoformat(since_str).replace(tzinfo=UTC)
+    except ValueError:
+        return [
+            TextContent(
+                type="text",
+                text=str({"error": f"Invalid date format: {since_str}"}),
+            )
+        ]
 
-        if name == "get_latest_briefing":
-            async with AsyncSession(comp.engine, expire_on_commit=False) as session:
-                stmt = select(BriefingRow).order_by(BriefingRow.briefing_date.desc()).limit(1)
-                query_result = await session.execute(stmt)
-                row = query_result.scalar_one_or_none()
-                if row is None:
-                    return [TextContent(type="text", text=str({"briefing": None}))]
-                briefing = _row_to_briefing(row)
-                return [TextContent(type="text", text=str(_briefing_to_dict(briefing)))]
-
-        if name == "get_briefings":
-            since_str = str(arguments.get("since", ""))
-            try:
-                since_date = datetime.fromisoformat(since_str).replace(tzinfo=UTC)
-            except ValueError:
-                return [
-                    TextContent(
-                        type="text",
-                        text=str({"error": f"Invalid date format: {since_str}"}),
-                    )
-                ]
-
-            async with AsyncSession(comp.engine, expire_on_commit=False) as session:
-                stmt = (
-                    select(BriefingRow)
-                    .where(BriefingRow.briefing_date >= since_date)
-                    .order_by(BriefingRow.briefing_date.desc())
-                )
-                query_result = await session.execute(stmt)
-                rows = query_result.scalars().all()
-                briefings = [_briefing_to_dict(_row_to_briefing(r)) for r in rows]
-                return [TextContent(type="text", text=str({"briefings": briefings}))]
-
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    async with AsyncSession(comp.engine, expire_on_commit=False) as session:
+        stmt = (
+            select(BriefingRow)
+            .where(BriefingRow.briefing_date >= since_date)
+            .order_by(BriefingRow.briefing_date.desc())
+        )
+        query_result = await session.execute(stmt)
+        rows = query_result.scalars().all()
+        briefings = [_briefing_to_dict(_row_to_briefing(r)) for r in rows]
+        return [TextContent(type="text", text=str({"briefings": briefings}))]

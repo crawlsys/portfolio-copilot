@@ -63,7 +63,14 @@ fmt: ## ruff format + eslint fix
 check: lint type test ## lint + type + test
 
 ci-clean: ## CI mode: disable socket, replay cassettes only
-	VCR_RECORD_MODE=none PYTEST_DISABLE_SOCKET=1 $(PYTEST) --disable-socket
+	# Socket blocking is implemented in tests/conftest.py, keyed off the
+	# PYTEST_DISABLE_SOCKET env var — pytest-socket is not a dependency, so
+	# no --disable-socket flag here (it broke this target).
+	# DATABASE_URL is cleared: the Makefile's .env include / dev default
+	# would otherwise un-skip the DB-backed tests, which then fail on any
+	# machine without a local Postgres (CI runs bare pytest and never sees
+	# the Makefile env).
+	DATABASE_URL= VCR_RECORD_MODE=none PYTEST_DISABLE_SOCKET=1 $(PYTEST)
 
 openapi: ## Regenerate OpenAPI client for web
 	DATABASE_URL= $(UV) run python -m apps.api.openapi > web/openapi.json

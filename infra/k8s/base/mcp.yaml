@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracker-mcp
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tracker
+      app.kubernetes.io/component: mcp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tracker
+        app.kubernetes.io/component: mcp
+    spec:
+      volumes:
+        - name: schwab-token
+          secret:
+            secretName: tracker-schwab-token
+      containers:
+        - name: mcp
+          image: harbor.example.com/tracker/tracker-backend:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: schwab-token
+              mountPath: /etc/schwab
+              readOnly: true
+          command:
+            - python
+            - -m
+            - apps.mcp.server
+          env:
+            - name: MCP_TRANSPORT
+              value: "http"
+            - name: MCP_PORT
+              value: "8765"
+          envFrom:
+            - secretRef:
+                name: tracker-secrets
+          ports:
+            - name: http
+              containerPort: 8765
+          # Streamable-HTTP endpoint is /mcp; a GET without a session returns
+          # 4xx from the transport, which still proves the listener is up —
+          # use a TCP probe to avoid coupling to transport semantics.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+# ClusterIP only — deliberately no Ingress. The MCP protocol has no auth
+# layer here and these tools serve live brokerage data (read-only, but
+# private). Reach it in-cluster (tracker-mcp.tracker.svc:8765/mcp) or via
+# port-forward / existing VPN policy.
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracker-mcp
+  namespace: tracker
+  labels:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: mcp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tracker
+    app.kubernetes.io/component: mcp
+  ports:
+    - name: http
+      port: 8765
+      targetPort: http

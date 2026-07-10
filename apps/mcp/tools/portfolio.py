@@ -1,6 +1,11 @@
 """Portfolio read-only tools — accounts, positions, summaries.
 
 All tools query through BrokerPort, never directly to DB.
+
+Module contract (see apps/mcp/tools/__init__.py): expose ``TOOLS`` and
+``handle()``. The low-level MCP Server keeps ONE handler per request type,
+so modules must never call @server.list_tools()/@server.call_tool()
+themselves — the aggregator in __init__.py owns the single registration.
 """
 
 from __future__ import annotations
@@ -8,7 +13,6 @@ from __future__ import annotations
 from mcp.types import TextContent, Tool
 
 from apps.common.composition import Composition
-from mcp.server import Server
 from trading.domain import Account, BrokerAccount, Position
 
 
@@ -49,70 +53,69 @@ def _account_snapshot_to_dict(snapshot: Account) -> dict[str, object]:
     }
 
 
-def register_portfolio_tools(server: Server) -> None:
-    """Register portfolio read-only tools."""
-
-    @server.list_tools()
-    async def list_portfolio_tools() -> list[Tool]:
-        return [
-            Tool(
-                name="get_accounts",
-                description="List all linked broker accounts with type and margin metadata.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {},
-                    "required": [],
+TOOLS: list[Tool] = [
+    Tool(
+        name="get_accounts",
+        description="List all linked broker accounts with type and margin metadata.",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_positions",
+        description="Get all positions for a specific account.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string",
+                    "description": "The broker account ID.",
                 },
-            ),
-            Tool(
-                name="get_positions",
-                description="Get all positions for a specific account.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "account_id": {
-                            "type": "string",
-                            "description": "The broker account ID.",
-                        },
-                    },
-                    "required": ["account_id"],
+            },
+            "required": ["account_id"],
+        },
+    ),
+    Tool(
+        name="get_account_summary",
+        description="Get a full account snapshot including balances and all positions.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string",
+                    "description": "The broker account ID.",
                 },
-            ),
-            Tool(
-                name="get_account_summary",
-                description="Get a full account snapshot including balances and all positions.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "account_id": {
-                            "type": "string",
-                            "description": "The broker account ID.",
-                        },
-                    },
-                    "required": ["account_id"],
-                },
-            ),
-        ]
+            },
+            "required": ["account_id"],
+        },
+    ),
+]
 
-    @server.call_tool()
-    async def call_portfolio_tool(name: str, arguments: dict[str, object]) -> list[TextContent]:
-        comp: Composition = server.state  # type: ignore[attr-defined]
+_TOOL_NAMES = frozenset(t.name for t in TOOLS)
 
-        if name == "get_accounts":
-            accounts = await comp.broker.get_accounts()
-            accounts_data = [_account_to_dict(a) for a in accounts]
-            return [TextContent(type="text", text=str(accounts_data))]
 
-        if name == "get_positions":
-            account_id = str(arguments.get("account_id", ""))
-            positions = await comp.broker.get_positions(account_id)
-            positions_data = [_position_to_dict(p) for p in positions]
-            return [TextContent(type="text", text=str(positions_data))]
+async def handle(
+    name: str, arguments: dict[str, object], comp: Composition
+) -> list[TextContent] | None:
+    """Handle a portfolio tool call; None if *name* is not ours."""
+    if name not in _TOOL_NAMES:
+        return None
 
-        if name == "get_account_summary":
-            account_id = str(arguments.get("account_id", ""))
-            snapshot = await comp.broker.get_account(account_id)
-            summary_data = _account_snapshot_to_dict(snapshot)
-            return [TextContent(type="text", text=str(summary_data))]
+    if name == "get_accounts":
+        accounts = await comp.broker.get_accounts()
+        accounts_data = [_account_to_dict(a) for a in accounts]
+        return [TextContent(type="text", text=str(accounts_data))]
 
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    if name == "get_positions":
+        account_id = str(arguments.get("account_id", ""))
+        positions = await comp.broker.get_positions(account_id)
+        positions_data = [_position_to_dict(p) for p in positions]
+        return [TextContent(type="text", text=str(positions_data))]
+
+    # get_account_summary
+    account_id = str(arguments.get("account_id", ""))
+    snapshot = await comp.broker.get_account(account_id)
+    summary_data = _account_snapshot_to_dict(snapshot)
+    return [TextContent(type="text", text=str(summary_data))]
