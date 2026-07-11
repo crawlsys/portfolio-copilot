@@ -193,22 +193,31 @@ Nothing is hardcoded; secrets come from the environment.
 
 ### Schwab OAuth setup
 
-```bash
-# Register a callback URL of https://127.0.0.1:8080/callback in the Schwab
-# developer portal, then run the login flow locally (it opens a browser):
-export BWS_ACCESS_TOKEN=...        # machine-account token, homelab project
-uv run python scripts/schwab_login.py
-# The token blob is written to ~/.tracker/schwab_token.json AND pushed to the
-# Bitwarden secret TRACKER_SCHWAB_TOKEN_JSON. Roll the pods to pick it up:
-kubectl -n tracker rollout restart deploy/tracker-api deploy/tracker-worker deploy/tracker-mcp
-```
+**Hosted flow (normal path).** A public, zero-secret callback service
+(`apps/webhook`, at `webhook.example.com`) handles re-auth. Register
+`https://webhook.example.com/schwab/callback` as the app's callback URL in
+the Schwab developer portal, then to (re-)auth just:
+
+1. Visit `https://webhook.example.com/schwab/login`, log into Schwab, approve.
+2. It exchanges the code and writes the token into the native `tracker-schwab-token`
+   Secret. Roll the pods to pick it up:
+   `kubectl -n tracker rollout restart deploy/tracker-api deploy/tracker-worker deploy/tracker-mcp`.
+
+The webhook holds no BWS token and no broad access: its ServiceAccount
+(`tracker-schwab-writer`) is RBAC-scoped to patch **only** the
+`tracker-schwab-token` Secret. The Schwab client id/secret it needs for the
+exchange arrive as env via `secretKeyRef` (never the whole secret bundle).
+
+**Local fallback.** `uv run python scripts/schwab_login.py` runs the browser
+flow locally and prints the `kubectl patch` to load the captured token into the
+same Secret.
 
 The static Schwab app creds (`SCHWAB_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI`)
-live in Bitwarden too and are synced to the pod env like every other secret —
-`schwab_login.py` only refreshes the OAuth *token*, not those.
+come from Bitwarden and sync to the pod env like every other secret — only the
+OAuth *token* rotates via the flows above.
 
-> ⚠️ **The refresh token expires in 7 days** (Schwab hard cap). Re-run
-> `schwab_login.py` before then; the `tracker-token-canary` CronJob alerts you.
+> ⚠️ **The refresh token expires in 7 days** (Schwab hard cap). Re-auth before
+> then; the `tracker-token-canary` CronJob alerts you (it can link the login URL).
 
 ### Holdings data (local / `fake` broker mode)
 

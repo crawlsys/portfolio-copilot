@@ -5,7 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- **Hosted Schwab OAuth webhook** (`apps/webhook`, `tracker-webhook` /
+  `webhook.example.com`) — re-auth is now "visit a link, log into Schwab,"
+  no local script or laptop credential. The service is public but holds no
+  broad access: it writes the token into the **native `tracker-schwab-token`
+  Secret** via `kubectl`, and its ServiceAccount (`tracker-schwab-writer`) is
+  RBAC-scoped to patch only that one Secret (`resourceNames: [tracker-schwab-token]`,
+  verbs get/patch). Client id/secret arrive via `secretKeyRef`, not the whole
+  bundle. `scripts/schwab_login.py` remains the local fallback (prints the
+  `kubectl patch`).
+
 ### Changed
+- The Schwab OAuth token (`tracker-schwab-token`) is now an app-managed **native
+  k8s Secret**, no longer synced from BWS/CSI — appropriate for a
+  frequently-rotating, app-generated token, and it enables the tightly-scoped
+  RBAC writer above. Static Schwab app creds stay in BWS.
 - **Secrets are now sourced entirely from Bitwarden Secrets Manager via the
   secrets-store CSI driver** — the plaintext `infra/k8s/base/secrets.yaml`
   Secret manifest is **removed**. A new `infra/k8s/base/secretproviderclass.yaml`

@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     # Path to the schwab-py native token file (mounted as a secret in k8s).
     # Written by scripts/schwab_login.py; refreshed in place by schwab-py.
     schwab_token_path: str = Field(default="/etc/schwab/token.json")
+    # The native k8s Secret the webhook writes the refreshed token.json into
+    # (mounted by api/worker/mcp at /etc/schwab/token.json). The webhook's
+    # ServiceAccount is RBAC-scoped to patch ONLY this Secret.
+    schwab_token_secret_name: str = Field(default="tracker-schwab-token")
+    pod_namespace: str = Field(default="tracker")
     # Account hash of the self-directed account — used by the recommendation
     # ledger's acted-on detector. Empty → detection is skipped (best-effort).
     self_directed_account_id: str = Field(default="")

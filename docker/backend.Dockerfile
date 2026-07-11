@@ -1,5 +1,13 @@
 # syntax=docker/dockerfile:1
-# Single image; entrypoint selected by cmd arg (apps.api | apps.mcp | apps.worker).
+# Single image; entrypoint selected by cmd arg
+# (apps.api | apps.mcp | apps.worker | apps.webhook).
+
+# kubectl — the webhook (apps.webhook) uses it to patch the native
+# tracker-schwab-token Secret in-cluster via its RBAC-scoped ServiceAccount.
+FROM debian:bookworm-slim AS kubectl
+ARG KUBECTL_VERSION=v1.31.0
+ADD https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+RUN chmod +x /usr/local/bin/kubectl
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 WORKDIR /app
@@ -20,6 +28,10 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 RUN useradd -u 10001 -r -s /usr/sbin/nologin appuser
 COPY --from=builder /app /app
+# kubectl for the webhook's in-cluster Secret patch. Only the webhook pod is
+# bound to a ServiceAccount that can use it (scoped to one Secret); other pods
+# have no such RBAC.
+COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
 USER appuser
 EXPOSE 8000
 CMD ["python", "-m", "apps.api"]
