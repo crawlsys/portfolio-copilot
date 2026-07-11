@@ -10,12 +10,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date
+from datetime import UTC, date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 import httpx
 
+from trading.adapters.massive.fundamentals import build_price_lookup
+from trading.application.advisors.snapshot import PeriodFundamentals
+from trading.domain import Symbol
+
 from .exceptions import EDGARAuthError, EDGARError, EDGARNotFoundError, EDGARRateLimitError
+from .fundamentals import company_facts_to_fundamentals
 from .parsing import (
     extract_form4_filings,
     normalize_cik,
@@ -26,6 +31,8 @@ from .parsing import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from trading.application.market_data.refresh_quotes import MarketDataPort
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +56,7 @@ class EDGARClient:
         *,
         base_url: str = "https://data.sec.gov",
         timeout: float = 30.0,
+        market_data: MarketDataPort | None = None,
     ) -> None:
         if not user_agent or "@" not in user_agent:
             raise ValueError(
@@ -59,6 +67,7 @@ class EDGARClient:
         self._user_agent = user_agent
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self._market_data = market_data
         self._ticker_to_cik_cache: dict[str, str] | None = None
         self._cache_lock = asyncio.Lock()
 
@@ -130,6 +139,30 @@ class EDGARClient:
         response = await self._request(url)
         result: dict[str, object] = response.json()
         return result
+
+    async def get_company_facts(self, ticker: str) -> dict[str, object]:
+        """Fetch the SEC XBRL company-facts document for *ticker*."""
+        cik = await self.ticker_to_cik(ticker)
+        response = await self._request(f"{self._base_url}/api/xbrl/companyfacts/CIK{cik}.json")
+        result: dict[str, object] = response.json()
+        return result
+
+    async def get_fundamentals_history(
+        self, ticker: str, as_of: date, limit: int = 20
+    ) -> list[PeriodFundamentals]:
+        """Return point-in-time TTM fundamentals, newest first."""
+        payload = await self.get_company_facts(ticker)
+        rows = company_facts_to_fundamentals(payload, as_of)
+        if not rows or self._market_data is None:
+            return rows[:limit]
+        filing_dates = [date.fromisoformat(r.filing_date) for r in rows if r.filing_date]
+        start = datetime.combine(min(filing_dates), time(), tzinfo=UTC) - timedelta(days=10)
+        end = datetime.combine(max(filing_dates), time(23, 59), tzinfo=UTC)
+        bars = await self._market_data.get_bars(Symbol(ticker), "1d", start, end)
+        lookup = build_price_lookup(
+            filing_dates, {bar.closed_at.date(): float(bar.close) for bar in bars}
+        )
+        return company_facts_to_fundamentals(payload, as_of, lookup)[:limit]
 
     async def get_form4_filings(
         self,

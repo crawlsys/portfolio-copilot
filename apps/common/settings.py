@@ -71,6 +71,8 @@ class Settings(BaseSettings):
 
     # Market data
     massive_api_key: str = Field(default="")
+    fundamentals_source: str = Field(default="edgar")  # edgar | massive
+    sec_user_agent: str = Field(default="")
 
     # Congressional data
     quiver_api_key: str = Field(default="")

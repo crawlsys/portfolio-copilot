@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.pool import NullPool
 
 from apps.common.settings import get_settings
+from trading.adapters.edgar import EDGARClient, EDGARError
 from trading.adapters.massive.client import MassiveClient
 from trading.adapters.massive.exceptions import MassiveError
 from trading.adapters.persistence.models import AdvisorViewRow, PositionRow
@@ -47,7 +48,7 @@ async def run_advisor_views() -> None:
         name
         for name, value in (
             ("DATABASE_URL", settings.database_url),
-            ("MASSIVE_API_KEY", settings.massive_api_key),
+            ("FUNDAMENTALS_CONFIG", _fundamentals_config(settings)),
             ("LLM_API_KEY", settings.llm_api_key),
         )
         if not value
@@ -89,14 +90,20 @@ async def run_advisor_views() -> None:
         )
 
         fresh = cached = failed = 0
-        async with MassiveClient(api_key=settings.massive_api_key) as market:
+        market = MassiveClient(api_key=settings.massive_api_key)
+        fundamentals = (
+            market
+            if settings.fundamentals_source == "massive"
+            else EDGARClient(settings.sec_user_agent, market_data=market if settings.massive_api_key else None)
+        )
+        async with market:
             for ticker in tickers:
                 try:
-                    snapshot = await build_snapshot(ticker, as_of.date(), market)
+                    snapshot = await build_snapshot(ticker, as_of.date(), fundamentals)
                 except InsufficientDataError as exc:
                     _log.info("advisor views: skipping %s — %s", ticker, exc)
                     continue
-                except MassiveError as exc:
+                except (MassiveError, EDGARError) as exc:
                     # Per-ticker isolation: fundamentals outage for one name
                     # must not sink the whole council run.
                     _log.warning("advisor views: %s data failure — %s", ticker, exc)
@@ -162,3 +169,12 @@ async def _persist_view(engine: AsyncEngine, view: AdvisorView, as_of: datetime)
 def run_advisor_views_sync() -> None:
     """Sync wrapper for the CronJob dispatcher."""
     asyncio.run(run_advisor_views())
+
+
+def _fundamentals_config(settings: object) -> str:
+    source = getattr(settings, "fundamentals_source", "edgar")
+    if source == "massive":
+        return str(getattr(settings, "massive_api_key", ""))
+    if source == "edgar":
+        return str(getattr(settings, "sec_user_agent", ""))
+    return ""

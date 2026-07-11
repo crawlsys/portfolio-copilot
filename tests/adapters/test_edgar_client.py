@@ -11,6 +11,7 @@ from trading.adapters.edgar import (
     EDGARClient,
     EDGARNotFoundError,
 )
+from trading.application.advisors import build_snapshot
 
 
 class TestEDGARClientConstruction:
@@ -75,6 +76,26 @@ class TestGetSubmissions:
             assert result["cik"] == "0000320193"
             assert result["name"] == "Apple Inc."
             assert "filings" in result
+
+
+@pytest.mark.cassette
+class TestGetFundamentalsHistory:
+    async def test_contract_is_point_in_time_and_newest_first(
+        self, trading_vcr: object
+    ) -> None:
+        client = EDGARClient("tracker test@example.com")
+        with trading_vcr.use_cassette("edgar/company_facts_aapl.yaml"):  # type: ignore[union-attr]
+            snapshot = await build_snapshot("AAPL", date(2025, 5, 1), client, periods=8)
+
+        rows = snapshot.periods
+        assert snapshot.ticker == "AAPL"
+        assert len(rows) == 8
+        assert [r.report_period for r in rows] == sorted(
+            (r.report_period for r in rows), reverse=True
+        )
+        assert all(r.filing_date is not None and r.filing_date <= "2025-05-01" for r in rows)
+        assert rows[0].revenue_growth is not None
+        assert rows[0].net_margin is not None
 
 
 @pytest.mark.cassette
