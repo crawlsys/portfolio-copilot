@@ -22,6 +22,17 @@ spec:
         - name: schwab-token
           secret:
             secretName: tracker-schwab-token
+        # Mount the SPC so this pod independently triggers the BWS→k8s Secret
+        # sync (doesn't rely solely on api/worker being up). See
+        # secretproviderclass.yaml.
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            nodePublishSecretRef:
+              name: bws-token
+            volumeAttributes:
+              secretProviderClass: tracker-secrets
       containers:
         - name: mcp
           image: harbor.example.com/tracker/tracker-backend:latest
@@ -29,6 +40,9 @@ spec:
           volumeMounts:
             - name: schwab-token
               mountPath: /etc/schwab
+              readOnly: true
+            - name: secrets-store
+              mountPath: /mnt/secrets
               readOnly: true
           command:
             - python

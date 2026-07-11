@@ -22,11 +22,9 @@ portal (https://developer.schwab.com), including the path and port.
 
 from __future__ import annotations
 
-import base64
-import json
 import os
+import subprocess
 import sys
-import time
 from pathlib import Path
 
 # Make the repo importable when run from the project root.
@@ -101,34 +99,63 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"  ⚠ verification call failed: {e}")
 
-    # Load the written token and emit the kubectl command.
     if not token_path.exists():
         print(f"\nERROR: token file not written at {token_path}", file=sys.stderr)
         return 1
 
-    token_bytes = token_path.read_bytes()
-    token_b64 = base64.b64encode(token_bytes).decode()
-
     print("\n" + "=" * 60)
-    print("  TOKEN CAPTURED — load it into the cluster:")
+    print("  TOKEN CAPTURED")
     print("=" * 60)
-    print()
     print("The token file is at:", token_path)
-    print()
-    print("To load into k8s as a secret (run from the repo root):")
-    print()
-    print("  kubectl create secret generic tracker-schwab-token -n tracker \\")
-    print(f"    --from-file=token.json=<PASTE_TOKEN_PATH> \\")
-    print("    --dry-run=client -o yaml | kubectl apply -f -")
-    print()
-    print("Or, base64-encoded single-line (for embedding):")
-    print()
-    print(f"  TOKEN_B64={token_b64}")
-    print()
-    print("NOTE: the refresh token expires in 7 DAYS (Schwab hard cap).")
-    print("Re-run this script before then to refresh, or set up the")
-    print("token-canary job to alert you.")
+    return _push_to_bws(token_path)
 
+
+_ROLL_CMD = (
+    "  kubectl -n tracker rollout restart "
+    "deploy/tracker-api deploy/tracker-worker deploy/tracker-mcp"
+)
+
+
+def _push_to_bws(token_path: Path) -> int:
+    """Push token.json to Bitwarden Secrets Manager (the source of truth).
+
+    The cluster's SecretProviderClass (infra/k8s/base/secretproviderclass.yaml)
+    syncs it into the `tracker-schwab-token` Secret; a pod restart (or the CSI
+    rotation poll) picks up the new value. No `kubectl create secret` needed.
+    """
+    bws_secret_id = os.environ.get(
+        "TRACKER_SCHWAB_TOKEN_BWS_ID", "e2eaf809-1477-4131-8486-b48400102584"
+    )
+
+    if not os.environ.get("BWS_ACCESS_TOKEN"):
+        print(
+            "\nBWS_ACCESS_TOKEN not set — cannot push to Bitwarden automatically.\n"
+            "Set it (a machine-account token with write access to the homelab\n"
+            f"project) and push manually:\n\n"
+            f'  bws secret edit {bws_secret_id} --value "$(cat {token_path})"\n\n'
+            f"Then restart a mounting pod:\n{_ROLL_CMD}"
+        )
+        return 0
+
+    print("\nPushing token.json to Bitwarden Secrets Manager...")
+    try:
+        subprocess.run(
+            ["bws", "secret", "edit", bws_secret_id, "--value", token_path.read_text()],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        print("  ✗ `bws` CLI not found on PATH — install it or push manually.", file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as exc:
+        print(f"  ✗ bws secret edit failed: {exc.stderr.strip()}", file=sys.stderr)
+        return 1
+
+    print(f"  ✓ pushed to BWS secret {bws_secret_id} (TRACKER_SCHWAB_TOKEN_JSON)")
+    print(f"\nRoll the pods to pick it up:\n{_ROLL_CMD}")
+    print("\nNOTE: the refresh token expires in 7 DAYS (Schwab hard cap).")
+    print("Re-run this script before then; the tracker-token-canary job alerts you.")
     return 0
 
 

@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- **Secrets are now sourced entirely from Bitwarden Secrets Manager via the
+  secrets-store CSI driver** — the plaintext `infra/k8s/base/secrets.yaml`
+  Secret manifest is **removed**. A new `infra/k8s/base/secretproviderclass.yaml`
+  (provider `bitwarden`) references BWS UUIDs and syncs both `tracker-secrets`
+  (env) and `tracker-schwab-token` (`token.json`). `api`/`worker`/`mcp` mount
+  the SPC CSI volume (`/mnt/secrets`) to drive the sync; CronJobs free-ride on
+  the always-on api/worker keepers. This codifies the live cluster setup (which
+  had drifted from git) and eliminates the committed-Secret antipattern.
+  Prerequisite: a `bws-token` Secret in the `tracker` namespace.
+- **`scripts/schwab_login.py`** now pushes the refreshed `token.json` to the
+  `TRACKER_SCHWAB_TOKEN_JSON` BWS secret (`bws secret edit`) instead of printing
+  a `kubectl create secret` command — one source of truth, picked up on the next
+  pod roll. The static Schwab app creds already live in BWS and sync like any
+  other env secret.
+
 ### Added
 - **Advisor council** (adopted from virattt/ai-hedge-fund v2, MIT): persona
   LLM analysts form point-in-time views over fundamentals snapshots.

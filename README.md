@@ -178,15 +178,19 @@ Nothing is hardcoded; secrets come from the environment.
 ```bash
 # Register a callback URL of https://127.0.0.1:8080/callback in the Schwab
 # developer portal, then run the login flow locally (it opens a browser):
+export BWS_ACCESS_TOKEN=...        # machine-account token, homelab project
 uv run python scripts/schwab_login.py
-# Token is written to ~/.tracker/schwab_token.json — load it into k8s:
-kubectl create secret generic tracker-schwab-token -n tracker \
-  --from-file=token.json=$HOME/.tracker/schwab_token.json \
-  --dry-run=client -o yaml | kubectl apply -f -
+# The token blob is written to ~/.tracker/schwab_token.json AND pushed to the
+# Bitwarden secret TRACKER_SCHWAB_TOKEN_JSON. Roll the pods to pick it up:
+kubectl -n tracker rollout restart deploy/tracker-api deploy/tracker-worker deploy/tracker-mcp
 ```
 
+The static Schwab app creds (`SCHWAB_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI`)
+live in Bitwarden too and are synced to the pod env like every other secret —
+`schwab_login.py` only refreshes the OAuth *token*, not those.
+
 > ⚠️ **The refresh token expires in 7 days** (Schwab hard cap). Re-run
-> `schwab_login.py` before then, or wire up the token-canary job to alert you.
+> `schwab_login.py` before then; the `tracker-token-canary` CronJob alerts you.
 
 ### Holdings data (local / `fake` broker mode)
 
@@ -266,13 +270,20 @@ Kubernetes manifests are in `infra/k8s/`. Scheduled work (daily digest,
 Congressional ingest, market-data canary, health checks) runs as native
 `CronJob`s; the long-running worker holds only the outbox relay. Holdings are
 mounted via a `ConfigMap` (not baked into the image — node containerd can serve
-stale image layers across rebuilds). The Schwab OAuth token is mounted as a
-secret at `/etc/schwab/token.json`.
+stale image layers across rebuilds).
+
+**Secrets come from Bitwarden Secrets Manager via the secrets-store CSI driver**
+(`infra/k8s/base/secretproviderclass.yaml`), not from a committed Secret. The
+`SecretProviderClass` references BWS UUIDs; the CSI driver syncs them into the
+`tracker-secrets` and `tracker-schwab-token` Secrets, which pods consume via
+`envFrom` and a `/etc/schwab/token.json` mount. Out-of-band prerequisites (not
+in git): a `bws-token` Secret in the `tracker` namespace (BWS machine-account
+access token) and the initial Schwab token (see *Schwab OAuth setup*).
 
 ```bash
 docker build -f docker/backend.Dockerfile -t <registry>/tracker-backend:<tag> .
 docker build -f docker/web.Dockerfile -t <registry>/tracker-web:<tag> .
-kubectl apply -f infra/k8s/base/
+kubectl apply -f infra/k8s/base/   # includes secretproviderclass.yaml
 ```
 
 ---

@@ -8,6 +8,13 @@
 #
 # NOTE: image is :latest/Always here to match the Deployments; on deploy the
 # tag is pinned via `kubectl set image cronjob/... ` alongside the api/worker.
+#
+# SECRETS: these jobs consume `tracker-secrets` (and mount `tracker-schwab-token`)
+# via envFrom/secret volume. Those Secrets are BWS-synced by the
+# SecretProviderClass in secretproviderclass.yaml — kept populated by the
+# always-on tracker-api / tracker-worker pods (which hold the SPC mount). The
+# CronJobs deliberately do NOT mount the SPC themselves; they free-ride on those
+# keepers, so a job run just reads the already-synced Secret.
 ---
 apiVersion: batch/v1
 kind: CronJob

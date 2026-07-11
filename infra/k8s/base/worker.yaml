@@ -25,6 +25,17 @@ spec:
         - name: schwab-token
           secret:
             secretName: tracker-schwab-token
+        # Along with tracker-api, this always-on pod holds the SPC mount that
+        # keeps the BWS-synced Secrets (tracker-secrets, tracker-schwab-token)
+        # populated for the whole namespace. See secretproviderclass.yaml.
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            nodePublishSecretRef:
+              name: bws-token
+            volumeAttributes:
+              secretProviderClass: tracker-secrets
       containers:
         - name: worker
           image: harbor.example.com/tracker/tracker-backend:latest
@@ -36,6 +47,9 @@ spec:
               readOnly: true
             - name: schwab-token
               mountPath: /etc/schwab
+              readOnly: true
+            - name: secrets-store
+              mountPath: /mnt/secrets
               readOnly: true
           command:
             - python

@@ -25,6 +25,18 @@ spec:
         - name: schwab-token
           secret:
             secretName: tracker-schwab-token
+        # Mounting the SPC is what makes the CSI driver create/refresh the
+        # synced Secrets (tracker-secrets, tracker-schwab-token) from Bitwarden.
+        # tracker-api + tracker-worker are always-on, so they keep those Secrets
+        # populated for the CronJobs (which consume them via envFrom).
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            nodePublishSecretRef:
+              name: bws-token
+            volumeAttributes:
+              secretProviderClass: tracker-secrets
       containers:
         - name: api
           image: harbor.example.com/tracker/tracker-backend:latest
@@ -43,6 +55,9 @@ spec:
               readOnly: true
             - name: schwab-token
               mountPath: /etc/schwab
+              readOnly: true
+            - name: secrets-store
+              mountPath: /mnt/secrets
               readOnly: true
           command:
             - uvicorn
