@@ -18,7 +18,7 @@ from typing import Protocol, runtime_checkable
 
 import httpx
 
-DEFAULT_LITELLM_BASE_URL = "http://127.0.0.1:30400"
+DEFAULT_LITELLM_BASE_URL = "http://localhost:4000"
 
 
 class AdvisorLLMError(RuntimeError):

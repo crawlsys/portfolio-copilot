@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 
 from trading.application.advisors import (
+    ADVISOR_REGISTRY,
     BuffettAdvisor,
     InsufficientDataError,
     PeriodFundamentals,
@@ -179,6 +180,30 @@ class TestAdvisorContract:
         assert signal.features["advisor"] == "buffett"
         assert signal.features["snapshot_hash"] == snap.content_hash
         assert signal.observed_at == observed
+
+
+class TestRegistry:
+    """Every registered persona must honour the advisor contract."""
+
+    def test_registry_keys_match_persona_names(self) -> None:
+        for key, cls in ADVISOR_REGISTRY.items():
+            assert cls(_StubLLM("")).name == key
+
+    def test_every_prompt_carries_schema_and_no_lookahead_rule(self) -> None:
+        for cls in ADVISOR_REGISTRY.values():
+            prompt = cls(_StubLLM("")).get_system_prompt()
+            assert '"signal"' in prompt and '"confidence"' in prompt
+            assert "after the as-of date" in prompt  # the anti-lookahead guard
+
+    @pytest.mark.asyncio
+    async def test_every_persona_forms_a_valid_view(self) -> None:
+        snap = await build_snapshot("AAPL", date(2026, 7, 10), _StubFundamentals(_FOUR_PERIODS))
+        for name, cls in ADVISOR_REGISTRY.items():
+            llm = _StubLLM('{"signal": "neutral", "confidence": 55, "reasoning": "Mixed."}')
+            view = await cls(llm).form_view(snap)
+            assert view.advisor == name
+            assert view.stance == "neutral"
+            assert not view.abstained
 
 
 class TestExtractJson:

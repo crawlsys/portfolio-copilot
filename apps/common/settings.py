@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     # Routes through the litellm gateway with llm_api_key; the alias decides
     # the upstream (advisor-frontier → Anthropic, swappable to local).
     advisor_model: str = Field(default="advisor-frontier")
-    litellm_base_url: str = Field(default="http://127.0.0.1:30400")
+    litellm_base_url: str = Field(default="http://localhost:4000")
 
     # Notifications
     push_provider: str = Field(default="")

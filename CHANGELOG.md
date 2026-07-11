@@ -42,6 +42,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
     and digest chat contexts gain an "Advisor Council" block; MCP gains
     read-only `list_advisors` / `get_advisor_views` tools.
   - Domain: `SignalKind.ADVISOR_VIEW` + `AdvisorView.to_signal()` projection.
+  - **Personas: Buffett, Munger, Graham, Burry** — a fundamentals-driven value
+    council. Each is one file (name + strict-JSON system prompt); registry in
+    `advisors/__init__.py`. A registry test asserts every persona honours the
+    agent contract (schema + no-lookahead rule + forms a valid view).
+
+### Changed
+- Parameterized the LiteLLM gateway default (`LITELLM_BASE_URL` /
+  `DEFAULT_LITELLM_BASE_URL`) to a generic `http://localhost:4000` — the real
+  endpoint is injected via env from BWS in production, not hardcoded.
 - **Recommendation ledger**: the daily digest LLM now has memory of its own
   prior advice (`recommendations` table, migration `0003_recommendations`).
   Each digest run: expires past-due recs, auto-detects acted-on BUYs by

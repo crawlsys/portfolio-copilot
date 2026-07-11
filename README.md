@@ -1,11 +1,13 @@
-# Tracker
+# Portfolio Copilot
 
 A self-hosted **portfolio management + Congressional-research tool** with
 **agent-driven, gated order execution**. It pulls your brokerage holdings,
 cross-references them against U.S. Congressional trade disclosures (STOCK Act
-filings), pulls market data, produces a daily AI-written **digest**, and lets
+filings), pulls market data, runs a council of **persona LLM analysts** over
+point-in-time fundamentals, produces a daily AI-written **digest**, and lets
 an agent (you, via a CLI) place live equity orders through a preview → confirm
-→ submit flow with a hard confirmation gate.
+→ submit flow with a hard confirmation gate. A read-only **MCP server** exposes
+portfolio, market, Congressional, briefing, and advisor data to external agents.
 
 ![Portfolio Dashboard](docs/screenshots/portfolio.png)
 
@@ -51,8 +53,20 @@ an agent (you, via a CLI) place live equity orders through a preview → confirm
 - **Daily briefing** — a lighter Congressional summary via a self-hosted LLM
   gateway (fallback path), formatted for mobile push (colored BUY/SELL lines,
   not raw markdown).
+- **Advisor council** — persona LLM analysts (Buffett, Munger, Graham, Burry)
+  reason over a **point-in-time fundamentals snapshot** (filtered on filing date
+  — no lookahead) and each emit a stance + confidence + thesis. Views are cached
+  by snapshot hash (an unchanged filing never re-pays the LLM) with the exact
+  prompt + response persisted as an audit trail. Surfaced in the digest, the
+  digest chat, and over MCP. Adding a persona is one file (name + system prompt).
+- **Read-only MCP server** — exposes portfolio, market, Congressional, briefing,
+  and advisor tools to external agents over stdio or streamable HTTP. Strictly
+  read-only (CI scope guards forbid any trade verb); agents can *see* everything
+  and *place* nothing.
 - **Event-sourced core** — transactional outbox → durable event log → in-process
   event bus. Every order submission is recorded in an append-only audit log.
+- **BWS-native secrets** — all secrets are sourced from Bitwarden Secrets Manager
+  via the secrets-store CSI driver; nothing sensitive lives in the manifests.
 
 ---
 
@@ -67,6 +81,10 @@ src/trading/
   application/            use cases, UnitOfWork, EventBus, OutboxRelay
     market_data/          quote refresh
     signals/              briefing + digest generation
+    advisors/             persona LLM analysts over fundamentals snapshots
+      snapshot.py         point-in-time FundamentalsSnapshot (no lookahead)
+      agent.py            AdvisorAgent base (cache + abstain contract)
+      buffett.py …        one file per persona (name + system prompt)
     portfolio/            position refresh, drift detection
     execution/            order placement (preview → confirm → submit)
   adapters/
@@ -74,7 +92,7 @@ src/trading/
       broker.py           OAuth, reads, preview/submit/cancel orders
       orders.py           equity order spec builder (market/limit)
       oauth_store.py      token persistence
-    massive/              market data (MarketDataPort)
+    massive/              market data + fundamentals (MarketDataPort)
     quiver/               Congressional disclosures
     edgar/                SEC filings / company tickers
     notifications/        Pushover / ntfy (NotifierPort)

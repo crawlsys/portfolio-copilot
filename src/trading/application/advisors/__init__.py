@@ -9,12 +9,15 @@ from __future__ import annotations
 
 from trading.application.advisors.agent import AdvisorAgent, AdvisorView
 from trading.application.advisors.buffett import BuffettAdvisor
+from trading.application.advisors.burry import BurryAdvisor
+from trading.application.advisors.graham import GrahamAdvisor
 from trading.application.advisors.llm import (
     AdvisorLLMError,
     LLMClient,
     OpenAICompatLLM,
     extract_json,
 )
+from trading.application.advisors.munger import MungerAdvisor
 from trading.application.advisors.snapshot import (
     MIN_PERIODS,
     FundamentalsPort,
@@ -24,8 +27,14 @@ from trading.application.advisors.snapshot import (
     build_snapshot,
 )
 
+# Value-council personas: fundamentals-driven analysts matching the data the
+# FundamentalsSnapshot carries. Add a persona = one file (name + system prompt)
+# and one line here.
 ADVISOR_REGISTRY: dict[str, type[AdvisorAgent]] = {
     "buffett": BuffettAdvisor,
+    "munger": MungerAdvisor,
+    "graham": GrahamAdvisor,
+    "burry": BurryAdvisor,
 }
 
 __all__ = [
@@ -35,10 +44,13 @@ __all__ = [
     "AdvisorLLMError",
     "AdvisorView",
     "BuffettAdvisor",
+    "BurryAdvisor",
     "FundamentalsPort",
     "FundamentalsSnapshot",
+    "GrahamAdvisor",
     "InsufficientDataError",
     "LLMClient",
+    "MungerAdvisor",
     "OpenAICompatLLM",
     "PeriodFundamentals",
     "build_snapshot",

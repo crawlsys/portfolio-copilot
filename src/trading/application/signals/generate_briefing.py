@@ -419,7 +419,7 @@ async def _call_litellm(ctx: _BriefingContext, api_key: str, model: str) -> tupl
     configured provider. Base URL comes from LITELLM_BASE_URL env or defaults
     to the k3s NodePort.
     """
-    base_url = os.environ.get("LITELLM_BASE_URL", "http://127.0.0.1:30400")
+    base_url = os.environ.get("LITELLM_BASE_URL", "http://localhost:4000")
     prompt = _build_llm_prompt(ctx)
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
